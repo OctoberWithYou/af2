@@ -1,0 +1,40 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.0'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+dependencies {
+    // 引入common模块
+    implementation project(':common')
+
+    // Netty WebSocket
+    implementation "io.netty:netty-all:${rootProject.nettyVersion}"
+
+    // Spring Boot Web
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    // Spring Boot WebSocket
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+
+    // 配置处理
+    implementation 'org.springframework.boot:spring-boot-configuration-processor'
+
+    // SLF4J日志
+    implementation 'org.slf4j:slf4j-api:2.0.9'
+
+    // 测试
+    testImplementation "org.junit.jupiter:junit-jupiter:${rootProject.junitVersion}"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+    testImplementation "io.rest-assured:rest-assured:${rootProject.restAssuredVersion}"
+    testImplementation "org.springframework.boot:spring-boot-starter-test"
+
+    // Allure测试报告
+    testImplementation "io.qameta.allure:allure-junit5:${rootProject.allureVersion}"
+    testImplementation "io.qameta.allure:allure-rest-assured:${rootProject.allureVersion}"
+}
+
+test {
+    useJUnitPlatform()
+    systemProperty 'allure.results.directory', 'build/reports/allure-results'
+}

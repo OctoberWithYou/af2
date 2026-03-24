@@ -1,0 +1,13 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    // JSON处理
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.16.0'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.16.0'
+
+    // 测试
+    testImplementation "org.junit.jupiter:junit-jupiter:${rootProject.junitVersion}"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}

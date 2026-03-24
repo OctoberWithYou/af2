@@ -1,0 +1,44 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    // 引入common模块进行测试
+    implementation project(':common')
+    implementation project(':server')
+    implementation project(':agent')
+    implementation project(':deploy')
+
+    // 测试框架
+    testImplementation "org.junit.jupiter:junit-jupiter:${rootProject.junitVersion}"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+
+    // RestAssured for API testing
+    testImplementation "io.rest-assured:rest-assured:${rootProject.restAssuredVersion}"
+    testImplementation "io.rest-assured:json-schema:${rootProject.restAssuredVersion}"
+
+    // Spring Boot Test
+    testImplementation "org.springframework.boot:spring-boot-starter-test"
+
+    // Allure
+    testImplementation "io.qameta.allure:allure-junit5:${rootProject.allureVersion}"
+    testImplementation "io.qameta.allure:allure-rest-assured:${rootProject.allureVersion}"
+
+    // JSON处理
+    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.16.0'
+}
+
+test {
+    useJUnitPlatform()
+    systemProperty 'allure.results.directory', 'build/reports/allure-results'
+}
+
+tasks.register('allureServe') {
+    group = 'verification'
+    description = 'Serve Allure report'
+    doLast {
+        exec {
+            commandLine 'allure', 'serve', 'build/reports/allure-results'
+        }
+    }
+}

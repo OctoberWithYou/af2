@@ -1,0 +1,46 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.0'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+dependencies {
+    // 引入common模块
+    implementation project(':common')
+
+    // Spring Boot Web
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    // Spring Boot Validation
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // MyBatis
+    implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
+
+    // H2 Database (嵌入式数据库)
+    runtimeOnly 'com.h2database:h2'
+
+    // SLF4J日志
+    implementation 'org.slf4j:slf4j-api:2.0.9'
+
+    // 测试
+    testImplementation "org.junit.jupiter:junit-jupiter:${rootProject.junitVersion}"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+    testImplementation "org.springframework.boot:spring-boot-starter-test"
+
+    // Allure测试报告
+    testImplementation "io.qameta.allure:allure-junit5:${rootProject.allureVersion}"
+}
+
+test {
+    useJUnitPlatform()
+    systemProperty 'allure.results.directory', 'build/reports/allure-results'
+}
+
+// 前端构建任务 (需要Node.js)
+// 如果不需要自动构建前端，可以注释掉
+// task buildFrontend(type: Exec) {
+//     workingDir 'src/main/resources/static'
+//     commandLine 'npm', 'install'
+//     commandLine 'npm', 'run', 'build'
+// }

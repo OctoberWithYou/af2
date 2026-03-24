@@ -1,0 +1,31 @@
+plugins {
+    id 'java'
+}
+
+dependencies {
+    // 引入common模块
+    implementation project(':common')
+
+    // Netty WebSocket Client
+    implementation "io.netty:netty-all:${rootProject.nettyVersion}"
+
+    // HTTP Client
+    implementation 'org.apache.httpcomponents.client5:httpclient5:5.2.1'
+
+    // SLF4J日志
+    implementation 'org.slf4j:slf4j-api:2.0.9'
+
+    // 测试
+    testImplementation "org.junit.jupiter:junit-jupiter:${rootProject.junitVersion}"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+    testImplementation "io.rest-assured:rest-assured:${rootProject.restAssuredVersion}"
+
+    // Allure测试报告
+    testImplementation "io.qameta.allure:allure-junit5:${rootProject.allureVersion}"
+    testImplementation "io.qameta.allure:allure-rest-assured:${rootProject.allureVersion}"
+}
+
+test {
+    useJUnitPlatform()
+    systemProperty 'allure.results.directory', 'build/reports/allure-results'
+}
