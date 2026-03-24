@@ -1,10 +1,11 @@
 plugins {
     id 'java'
     id 'idea'
+    id 'maven-publish'
 }
 
 group = 'org.ljc'
-version = '1.0.0-SNAPSHOT'
+version = '1.0.0'
 
 ext {
     javaVersion = project.hasProperty('java.version') ? project.property('java.version') : '17'
@@ -17,7 +18,7 @@ ext {
 
 allprojects {
     group = 'org.ljc'
-    version = '1.0.0-SNAPSHOT'
+    version = '1.0.0'
 
     repositories {
         mavenCentral()
@@ -41,6 +42,36 @@ subprojects {
     }
 }
 
+// 生成版本信息文件
+task generateVersionInfo {
+    doLast {
+        def gitCommit = 'git rev-parse --short HEAD'.execute().text.trim()
+        def gitDescribe = 'git describe --tags --always'.execute().text.trim()
+        def buildTime = new Date().format('yyyy-MM-dd HH:mm:ss')
+
+        // 创建版本信息文件
+        def resourcesDir = file("src/main/resources")
+        resourcesDir.mkdirs()
+        def versionFile = file("src/main/resources/version.properties")
+
+        versionFile.text = """\
+version=${version}
+git.commit=${gitCommit}
+git.describe=${gitDescribe}
+build.time=${buildTime}
+""".stripIndent()
+
+        println "Generated version info: ${version} (${gitDescribe})"
+    }
+}
+
+// 确保在编译前生成版本信息
+subprojects {
+    tasks.withType(JavaCompile) {
+        dependsOn rootProject.generateVersionInfo
+    }
+}
+
 tasks.register('buildAll') {
     group = 'build'
     description = 'Build all modules'
@@ -51,4 +82,10 @@ tasks.register('testAll') {
     group = 'verification'
     description = 'Run all tests'
     dependsOn subprojects*.test
+}
+
+tasks.register('printVersion') {
+    doLast {
+        println "Project Version: ${version}"
+    }
 }
