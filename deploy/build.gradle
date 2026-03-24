@@ -1,7 +1,12 @@
 plugins {
     id 'java'
+    id 'application'
     id 'org.springframework.boot' version '3.5.0'
     id 'io.spring.dependency-management' version '1.1.7'
+}
+
+application {
+    mainClass = 'org.ljc.deploy.DeployApplication'
 }
 
 dependencies {
@@ -17,8 +22,11 @@ dependencies {
     // MyBatis
     implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
 
-    // H2 Database (嵌入式数据库)
-    runtimeOnly 'com.h2database:h2'
+    // H2 Database (嵌入式数据库 - 约定配置)
+    implementation 'com.h2database:h2'
+
+    // Spring JDBC (嵌入式数据库支持)
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
 
     // SLF4J日志
     implementation 'org.slf4j:slf4j-api:2.0.9'
@@ -30,6 +38,20 @@ dependencies {
 
     // Allure测试报告
     testImplementation "io.qameta.allure:allure-junit5:${rootProject.allureVersion}"
+}
+
+// 打包时复制agent和server的jar到deploy目录（自包含部署）
+// agent和server的jar需要在根项目构建后存在于agent/build/libs和server/build/libs
+
+// 清理时也清理复制的jar
+clean {
+    doLast {
+        def libsDir = file("$buildDir/libs")
+        if (libsDir.exists()) {
+            new File(libsDir, "agent.jar")?.delete()
+            new File(libsDir, "server.jar")?.delete()
+        }
+    }
 }
 
 test {

@@ -101,15 +101,32 @@ public class DeployService {
             config.setStatus("DEPLOYING");
             configMapper.update(config);
 
-            // 构建启动命令 (示例，实际需要根据实际情况调整)
-            String jarPath = getJarPath(config.getType());
+            // 构建启动命令
+            String jarPath = getJarPath(config);
+            String workDir = getWorkDir(config);
+
+            logger.info("Deploying {} with jarPath={}, workDir={}", config.getType(), jarPath, workDir);
+
+            // 检查jar文件是否存在
+            java.io.File jarFile = new java.io.File(workDir, jarPath);
+            if (!jarFile.exists()) {
+                // 尝试绝对路径
+                jarFile = new java.io.File(jarPath);
+            }
+            if (!jarFile.exists()) {
+                result.put("success", false);
+                result.put("message", "JAR file not found: " + jarPath + " (workDir: " + workDir + ")");
+                config.setStatus("STOPPED");
+                configMapper.update(config);
+                return result;
+            }
+
             ProcessBuilder pb = new ProcessBuilder(
-                "java", "-jar", jarPath,
-                "--spring.config.location=application.yml"
+                "java", "-jar", jarPath
             );
 
             // 设置工作目录
-            pb.directory(new java.io.File(getWorkDir(config.getType())));
+            pb.directory(new java.io.File(workDir));
 
             // 启动进程
             Process process = pb.start();
@@ -204,18 +221,52 @@ public class DeployService {
     }
 
     /**
-     * 获取JAR路径
+     * 从配置中获取JAR路径
+     * 优先从配置获取，否则使用默认路径
+     * 默认路径：相对于deploy运行目录
      */
-    private String getJarPath(String type) {
-        // 实际部署时需要根据构建产物调整
-        return "build/libs/" + type.toLowerCase() + "-1.0.0-SNAPSHOT.jar";
+    private String getJarPath(DeployConfig config) {
+        // 优先从配置JSON中获取jarPath
+        try {
+            if (config.getConfigJson() != null && !config.getConfigJson().isEmpty()) {
+                Map<String, String> cfg = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(config.getConfigJson(), Map.class);
+                if (cfg.containsKey("jarPath") && cfg.get("jarPath") != null && !cfg.get("jarPath").isEmpty()) {
+                    return cfg.get("jarPath");
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to parse configJson, using default path", e);
+        }
+
+        // 默认路径：相对于deploy目录
+        String type = config.getType();
+        if ("AGENT".equals(type)) {
+            return "agent.jar";
+        } else if ("SERVER".equals(type)) {
+            return "server.jar";
+        }
+        return type.toLowerCase() + ".jar";
     }
 
     /**
      * 获取工作目录
      */
-    private String getWorkDir(String type) {
-        // 实际部署时需要根据实际情况调整
+    private String getWorkDir(DeployConfig config) {
+        // 从配置JSON中获取workDir
+        try {
+            if (config.getConfigJson() != null && !config.getConfigJson().isEmpty()) {
+                Map<String, String> cfg = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(config.getConfigJson(), Map.class);
+                if (cfg.containsKey("workDir") && cfg.get("workDir") != null && !cfg.get("workDir").isEmpty()) {
+                    return cfg.get("workDir");
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to parse configJson for workDir", e);
+        }
+
+        // 默认使用deploy的运行目录
         return ".";
     }
 }
