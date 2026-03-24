@@ -7,6 +7,12 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.16.0'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.16.0'
 
+    // Netty SSL
+    implementation "io.netty:netty-handler:${rootProject.nettyVersion}"
+
+    // 日志
+    implementation 'org.slf4j:slf4j-api:2.0.9'
+
     // 测试
     testImplementation "org.junit.jupiter:junit-jupiter:${rootProject.junitVersion}"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
