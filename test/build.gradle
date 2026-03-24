@@ -1,12 +1,25 @@
 plugins {
     id 'java-library'
     id 'jacoco'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+ext {
+    springBootVersion = '3.5.0'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.boot:spring-boot-dependencies:${springBootVersion}"
+    }
 }
 
 dependencies {
     // 引入模块进行测试
     implementation project(':common')
     implementation project(':agent')
+    implementation project(':server')
+    implementation project(':deploy')
 
     // 测试框架
     testImplementation "org.junit.jupiter:junit-jupiter:${rootProject.junitVersion}"
@@ -63,9 +76,19 @@ jacocoTestReport {
         xml.required = true
         html.required = true
     }
-    // 统计 common 和 agent 模块的覆盖率
-    sourceDirectories.from files('../common/src/main/java', '../agent/src/main/java')
-    classDirectories.from files('../common/build/classes/java/main', '../agent/build/classes/java/main')
+    // 统计所有模块的覆盖率
+    sourceDirectories.from files(
+        '../common/src/main/java',
+        '../agent/src/main/java',
+        '../server/src/main/java',
+        '../deploy/src/main/java'
+    )
+    classDirectories.from files(
+        '../common/build/classes/java/main',
+        '../agent/build/classes/java/main',
+        '../server/build/classes/java/main',
+        '../deploy/build/classes/java/main'
+    )
     executionData.from files(buildDir.getAbsolutePath() + '/jacoco/test.exec')
 }
 
@@ -77,10 +100,16 @@ jacocoTestCoverageVerification {
         rule {
             element = 'CLASS'
             excludes = [
-                'org.ljc.agent.handler.WebSocketClientHandler',
-                'org.ljc.agent.handler.WebSocketClientInitializer',
+                // Agent 模块 - 网络层代码
+                'org.ljc.agent.handler.*',
                 'org.ljc.agent.AgentApplication',
-                'org.ljc.agent.service.RequestForwarder'
+                // Server 模块 - 网络层代码
+                'org.ljc.server.handler.*',
+                'org.ljc.server.ServerApplication',
+                'org.ljc.server.registry.*',
+                // Deploy 模块 - 启动类和配置
+                'org.ljc.deploy.DeployApplication',
+                'org.ljc.deploy.config.*'
             ]
             limit {
                 counter = 'INSTRUCTION'
