@@ -22,9 +22,32 @@ dependencies {
     testImplementation "io.netty:netty-all:${rootProject.nettyVersion}"
 }
 
+// 单元测试配置 - build 时只运行单元测试
 test {
     useJUnitPlatform()
     systemProperty 'allure.results.directory', 'build/reports/allure-results'
+    
+    // 默认只运行单元测试，排除 API 集成测试
+    exclude '**/ServerApiTest.*'
+    exclude '**/DeployApiTest.*'
+}
+
+// API 集成测试任务（需要手动启动服务后运行）
+tasks.register('apiTest', Test) {
+    group = 'verification'
+    description = 'Run API integration tests (requires running services)'
+    
+    useJUnitPlatform()
+    systemProperty 'allure.results.directory', 'build/reports/allure-results'
+    
+    // 只运行 API 测试
+    include '**/ServerApiTest.*'
+    include '**/DeployApiTest.*'
+    
+    // 可选：通过环境变量控制是否跳过
+    onlyIf {
+        System.getenv('RUN_API_TESTS') == 'true' || project.hasProperty('runApiTests')
+    }
 }
 
 jacocoTestReport {
