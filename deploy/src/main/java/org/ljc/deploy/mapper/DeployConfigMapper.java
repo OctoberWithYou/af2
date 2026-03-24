@@ -11,13 +11,13 @@ import java.util.List;
 @Mapper
 public interface DeployConfigMapper {
 
-    @Select("SELECT * FROM deploy_config ORDER BY created_at DESC")
+    @Select("SELECT id, name, type, config_json as configJson, status, created_at as createdAt, updated_at as updatedAt, created_by as createdBy FROM deploy_config ORDER BY created_at DESC")
     List<DeployConfig> findAll();
 
-    @Select("SELECT * FROM deploy_config WHERE id = #{id}")
+    @Select("SELECT id, name, type, config_json as configJson, status, created_at as createdAt, updated_at as updatedAt, created_by as createdBy FROM deploy_config WHERE id = #{id}")
     DeployConfig findById(Long id);
 
-    @Select("SELECT * FROM deploy_config WHERE type = #{type}")
+    @Select("SELECT id, name, type, config_json as configJson, status, created_at as createdAt, updated_at as updatedAt, created_by as createdBy FROM deploy_config WHERE type = #{type}")
     List<DeployConfig> findByType(String type);
 
     @Insert("INSERT INTO deploy_config(name, type, config_json, status, created_at, updated_at, created_by) " +

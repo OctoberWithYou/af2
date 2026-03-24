@@ -56,14 +56,14 @@ test {
 tasks.register('apiTest', Test) {
     group = 'verification'
     description = 'Run API integration tests (requires running services)'
-    
+
     useJUnitPlatform()
     systemProperty 'allure.results.directory', 'build/reports/allure-results'
-    
+
     // 只运行 API 测试
-    include '**/ServerApiTest.*'
-    include '**/DeployApiTest.*'
-    
+    include '**/ServerApiTest*'
+    include '**/DeployApiTest*'
+
     // 可选：通过环境变量控制是否跳过
     onlyIf {
         System.getenv('RUN_API_TESTS') == 'true' || project.hasProperty('runApiTests')
