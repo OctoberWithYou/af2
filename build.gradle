@@ -2,7 +2,6 @@ plugins {
     id 'java'
     id 'idea'
     id 'maven-publish'
-    id 'jacoco'
 }
 
 group = 'org.ljc'
@@ -139,31 +138,3 @@ tasks.register('packageDistribution') {
         println "Distribution package created at: $distDir"
     }
 }
-
-// JaCoCo 代码覆盖率配置
-jacoco {
-    toolVersion = '0.8.11'
-}
-
-jacocoTestReport {
-    dependsOn test
-    reports {
-        xml.required = true
-        html.required = true
-        csv.required = false
-    }
-
-    // 配置需要检查的源代码
-    afterEvaluate {
-        classDirectories.setFrom(files(classDirectories.files.collect {
-            fileTree(dir: it, excludes: [
-                '**/*Application.*',
-                '**/*Config.*',
-                '**/model/*',
-                '**/entity/*',
-                '**/exception/*'
-            ])
-        }))
-    }
-}
-
