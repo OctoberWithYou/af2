@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id 'application'
+    id 'jacoco'
 }
 
 application {
@@ -8,7 +9,7 @@ application {
 }
 
 dependencies {
-    // 引入common模块
+    // 引入 common 模块
     implementation project(':common')
 
     // Netty WebSocket Client
@@ -17,7 +18,7 @@ dependencies {
     // HTTP Client
     implementation 'org.apache.httpcomponents.client5:httpclient5:5.2.1'
 
-    // SLF4J日志
+    // SLF4J 日志
     implementation 'org.slf4j:slf4j-api:2.0.9'
     implementation 'ch.qos.logback:logback-classic:1.4.14'
 
@@ -25,7 +26,7 @@ dependencies {
     testImplementation "org.junit.jupiter:junit-jupiter:${rootProject.junitVersion}"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 
-    // Allure测试报告
+    // Allure 测试报告
     testImplementation "io.qameta.allure:allure-junit5:${rootProject.allureVersion}"
 }
 
@@ -42,5 +43,13 @@ jar {
             'Implementation-Version': version,
             'Built-By': 'ai-forward2'
         )
+    }
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
     }
 }

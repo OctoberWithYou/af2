@@ -12,6 +12,10 @@ dependencies {
     testImplementation "org.junit.jupiter:junit-jupiter:${rootProject.junitVersion}"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 
+    // Mockito mocking 框架
+    testImplementation 'org.mockito:mockito-core:5.8.0'
+    testImplementation 'org.mockito:mockito-inline:5.2.0'
+
     // RestAssured for API testing
     testImplementation "io.rest-assured:rest-assured:${rootProject.restAssuredVersion}"
 
@@ -30,6 +34,9 @@ test {
     // 默认只运行单元测试，排除 API 集成测试
     exclude '**/ServerApiTest.*'
     exclude '**/DeployApiTest.*'
+    
+    // 代码覆盖率统计
+    finalizedBy jacocoTestReport
 }
 
 // API 集成测试任务（需要手动启动服务后运行）
@@ -55,5 +62,44 @@ jacocoTestReport {
     reports {
         xml.required = true
         html.required = true
+    }
+    // 统计 common 和 agent 模块的覆盖率
+    sourceDirectories.from files('../common/src/main/java', '../agent/src/main/java')
+    classDirectories.from files('../common/build/classes/java/main', '../agent/build/classes/java/main')
+    executionData.from files(buildDir.getAbsolutePath() + '/jacoco/test.exec')
+}
+
+// 覆盖率验证
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        // 核心逻辑代码 - 70% 覆盖率目标
+        rule {
+            element = 'CLASS'
+            excludes = [
+                'org.ljc.agent.handler.WebSocketClientHandler',
+                'org.ljc.agent.handler.WebSocketClientInitializer',
+                'org.ljc.agent.AgentApplication',
+                'org.ljc.agent.service.RequestForwarder'
+            ]
+            limit {
+                counter = 'INSTRUCTION'
+                value = 'COVEREDRATIO'
+                minimum = 0.70
+            }
+            limit {
+                counter = 'METHOD'
+                value = 'COVEREDRATIO'
+                minimum = 0.80
+            }
+        }
+        // 整体覆盖率 - 50% 行覆盖率目标（包含网络层代码）
+        rule {
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.50
+            }
+        }
     }
 }

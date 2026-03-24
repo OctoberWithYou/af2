@@ -1,9 +1,10 @@
 plugins {
     id 'java-library'
+    id 'jacoco'
 }
 
 dependencies {
-    // JSON处理
+    // JSON 处理
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.16.0'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.16.0'
 
@@ -16,4 +17,16 @@ dependencies {
     // 测试
     testImplementation "org.junit.jupiter:junit-jupiter:${rootProject.junitVersion}"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
 }
