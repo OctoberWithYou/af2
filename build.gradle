@@ -65,10 +65,13 @@ build.time=${buildTime}
     }
 }
 
-// 确保在编译前生成版本信息
+// 让 build 任务自动包含 distTar 和 distZip (只有有 application plugin 的模块才有)
 subprojects {
-    tasks.withType(JavaCompile) {
-        dependsOn rootProject.generateVersionInfo
+    tasks.named('build') {
+        if (project.plugins.hasPlugin('application')) {
+            dependsOn('distTar')
+            dependsOn('distZip')
+        }
     }
 }
 
@@ -112,6 +115,18 @@ tasks.register('packageDistribution') {
         copy {
             from file("deploy/build/libs/deploy-${version}.jar")
             into "$distDir/deploy"
+        }
+
+        // 将agent和server的jar复制到deploy目录（实现一键部署）
+        copy {
+            from file("agent/build/libs/agent-${version}.jar")
+            into "$distDir/deploy"
+            rename { "agent.jar" }
+        }
+        copy {
+            from file("server/build/libs/server-${version}.jar")
+            into "$distDir/deploy"
+            rename { "server.jar" }
         }
 
         // 复制配置文件
