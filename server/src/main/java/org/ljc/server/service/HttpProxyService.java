@@ -2,6 +2,7 @@ package org.ljc.server.service;
 
 import io.netty.channel.Channel;
 import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 import org.ljc.common.model.*;
 import org.ljc.common.util.JsonUtil;
 import org.ljc.server.config.ServerConfig;
@@ -12,7 +13,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * HTTP代理服务
@@ -25,6 +29,16 @@ public class HttpProxyService {
     private final ServerConfig serverConfig;
     private final AgentRegistry agentRegistry;
 
+    /**
+     * 等待响应的Future: messageId -> CompletableFuture
+     */
+    private final ConcurrentHashMap<String, CompletableFuture<HttpResponse>> pendingResponses = new ConcurrentHashMap<>();
+
+    /**
+     * 默认超时时间(秒)
+     */
+    private static final int DEFAULT_TIMEOUT = 60;
+
     public HttpProxyService(ServerConfig serverConfig, AgentRegistry agentRegistry) {
         this.serverConfig = serverConfig;
         this.agentRegistry = agentRegistry;
@@ -34,35 +48,74 @@ public class HttpProxyService {
      * 处理HTTP请求并转发到Agent
      *
      * @param request HTTP请求
-     * @param targetAgentId 目标Agent ID
+     * @param targetAgentId 目标Agent ID (如果为null则使用默认Agent)
      * @return HTTP响应
      */
     public HttpResponse forwardRequest(FullHttpRequest request, String targetAgentId) {
         long startTime = System.currentTimeMillis();
 
+        // 确定目标Agent
+        String agentId = targetAgentId;
+        if (agentId == null || agentId.isEmpty()) {
+            // 如果没有指定Agent，使用第一个已连接的Agent
+            Map<String, AgentInfo> agents = agentRegistry.getAllAgents();
+            if (agents.isEmpty()) {
+                return createErrorResponse(404, "No available agents");
+            }
+            agentId = agents.keySet().iterator().next();
+            logger.info("No agent specified, using default agent: {}", agentId);
+        }
+
         // 获取目标Agent的Channel
-        Channel agentChannel = agentRegistry.getChannelByAgentId(targetAgentId);
+        Channel agentChannel = agentRegistry.getChannelByAgentId(agentId);
         if (agentChannel == null || !agentChannel.isActive()) {
-            return createErrorResponse(404, "Agent not found or not connected");
+            return createErrorResponse(404, "Agent not found or not connected: " + agentId);
         }
 
         // 构建转发消息
-        Message forwardMessage = buildForwardMessage(request, targetAgentId);
+        Message forwardMessage = buildForwardMessage(request, agentId);
 
-        // 发送消息到Agent (这里需要等待响应，实际实现需要更复杂的异步处理)
-        agentChannel.writeAndFlush(
-            new io.netty.handler.codec.http.websocketx.TextWebSocketFrame(
-                JsonUtil.toJson(forwardMessage)));
+        // 创建CompletableFuture等待响应
+        CompletableFuture<HttpResponse> future = new CompletableFuture<>();
+        pendingResponses.put(forwardMessage.getId(), future);
 
-        // TODO: 等待Agent响应 (需要实现异步响应机制)
-        logger.info("Forwarded request to agent: {}, path: {}", targetAgentId, request.uri());
+        try {
+            // 发送消息到Agent
+            agentChannel.writeAndFlush(new TextWebSocketFrame(JsonUtil.toJson(forwardMessage)));
+            logger.info("Forwarded request to agent: {}, path: {}, messageId: {}",
+                agentId, request.uri(), forwardMessage.getId());
 
-        // 返回模拟响应
-        HttpResponse response = new HttpResponse();
-        response.setStatusCode(200);
-        response.setStatusMessage("OK");
-        response.setResponseTime(System.currentTimeMillis() - startTime);
-        return response;
+            // 等待响应 (带超时)
+            HttpResponse response = future.get(DEFAULT_TIMEOUT, TimeUnit.SECONDS);
+            response.setResponseTime(System.currentTimeMillis() - startTime);
+            return response;
+
+        } catch (TimeoutException e) {
+            logger.warn("Request timeout for message: {}", forwardMessage.getId());
+            pendingResponses.remove(forwardMessage.getId());
+            return createErrorResponse(504, "Gateway Timeout - Agent response timeout");
+        } catch (Exception e) {
+            logger.error("Failed to forward request", e);
+            pendingResponses.remove(forwardMessage.getId());
+            return createErrorResponse(500, "Internal Server Error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 处理Agent返回的响应
+     * 由WebSocket处理器调用
+     *
+     * @param messageId 消息ID
+     * @param response HTTP响应
+     */
+    public void handleResponse(String messageId, HttpResponse response) {
+        CompletableFuture<HttpResponse> future = pendingResponses.remove(messageId);
+        if (future != null) {
+            future.complete(response);
+            logger.debug("Response received for message: {}", messageId);
+        } else {
+            logger.warn("No pending request found for message: {}", messageId);
+        }
     }
 
     /**
@@ -89,6 +142,13 @@ public class HttpProxyService {
             httpRequest.setBody(request.content().toString(io.netty.util.CharsetUtil.UTF_8));
         }
 
+        // 设置Content-Type
+        String contentType = request.headers().get("Content-Type");
+        if (contentType != null) {
+            httpRequest.setContentType(contentType);
+        }
+
+        httpRequest.setTimeout(DEFAULT_TIMEOUT * 1000);
         message.setPayload(JsonUtil.toJson(httpRequest));
         return message;
     }
@@ -100,7 +160,16 @@ public class HttpProxyService {
         HttpResponse response = new HttpResponse();
         response.setStatusCode(statusCode);
         response.setStatusMessage(message);
-        response.setBody(message);
+        response.setBody("{\"error\":\"" + message + "\"}");
+        response.setContentType("application/json");
+        response.setCharset("UTF-8");
         return response;
+    }
+
+    /**
+     * 获取等待中的请求数量
+     */
+    public int getPendingCount() {
+        return pendingResponses.size();
     }
 }

@@ -1,30 +1,31 @@
 package org.ljc.server.handler;
 
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.http.websocketx.WebSocket13FrameDecoder;
 import io.netty.handler.codec.http.websocketx.WebSocket13FrameEncoder;
-import io.netty.handler.codec.http.websocketx.WebSocketServerHandshaker;
 import io.netty.handler.codec.http.websocketx.WebSocketServerHandshakerFactory;
 import io.netty.handler.timeout.IdleStateHandler;
 import org.ljc.server.config.ServerConfig;
 import org.ljc.server.registry.AgentRegistry;
+import org.ljc.server.service.HttpProxyService;
 
 /**
  * WebSocket服务器通道初始化器
  * 配置Netty channel的处理器链
  */
-public class WebSocketServerInitializer extends ChannelInitializer<SocketChannel> {
+public class WebSocketServerInitializer extends io.netty.channel.ChannelInitializer<SocketChannel> {
     private final ServerConfig serverConfig;
     private final AgentRegistry agentRegistry;
+    private final HttpProxyService httpProxyService;
 
-    public WebSocketServerInitializer(ServerConfig serverConfig, AgentRegistry agentRegistry) {
+    public WebSocketServerInitializer(ServerConfig serverConfig, AgentRegistry agentRegistry,
+                                       HttpProxyService httpProxyService) {
         this.serverConfig = serverConfig;
         this.agentRegistry = agentRegistry;
+        this.httpProxyService = httpProxyService;
     }
 
     @Override
@@ -43,7 +44,7 @@ public class WebSocketServerInitializer extends ChannelInitializer<SocketChannel
             serverConfig.getHeartbeatInterval(),
             serverConfig.getMaxIdleTime()));
 
-        // WebSocket编解码器 (使用正确的构造器)
+        // WebSocket编解码器
         pipeline.addLast(new WebSocket13FrameDecoder(true, true, 65536));
         pipeline.addLast(new WebSocket13FrameEncoder(true));
 
@@ -51,9 +52,8 @@ public class WebSocketServerInitializer extends ChannelInitializer<SocketChannel
         WebSocketServerHandshakerFactory wsFactory = new WebSocketServerHandshakerFactory(
             getWebSocketUrl(), null, true);
 
-        // 注意: handshaker将在收到第一个FullHttpRequest时创建
-        // 传递给handler一个工厂引用，由handler在收到HTTP请求时创建handshaker
-        pipeline.addLast(new WebSocketServerHandler(serverConfig, agentRegistry, wsFactory));
+        // WebSocket处理器 (传入HttpProxyService)
+        pipeline.addLast(new WebSocketServerHandler(serverConfig, agentRegistry, wsFactory, httpProxyService));
     }
 
     /**

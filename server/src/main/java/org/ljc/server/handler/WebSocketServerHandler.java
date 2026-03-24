@@ -8,6 +8,7 @@ import org.ljc.common.model.*;
 import org.ljc.common.util.JsonUtil;
 import org.ljc.server.config.ServerConfig;
 import org.ljc.server.registry.AgentRegistry;
+import org.ljc.server.service.HttpProxyService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,15 +24,18 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<Object> 
     private final ServerConfig serverConfig;
     private final AgentRegistry agentRegistry;
     private final WebSocketServerHandshakerFactory handshakerFactory;
+    private final HttpProxyService httpProxyService;
     private WebSocketServerHandshaker handshaker;
 
     private String agentId;
 
     public WebSocketServerHandler(ServerConfig serverConfig, AgentRegistry agentRegistry,
-                                   WebSocketServerHandshakerFactory handshakerFactory) {
+                                   WebSocketServerHandshakerFactory handshakerFactory,
+                                   HttpProxyService httpProxyService) {
         this.serverConfig = serverConfig;
         this.agentRegistry = agentRegistry;
         this.handshakerFactory = handshakerFactory;
+        this.httpProxyService = httpProxyService;
     }
 
     @Override
@@ -157,10 +161,26 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<Object> 
 
     /**
      * 处理Agent转发的HTTP响应
+     * 将响应返回给等待的HTTP客户端
      */
     private void handleForwardResponse(ChannelHandlerContext ctx, Message message) {
-        // TODO: 转发响应给HTTP客户端
-        logger.debug("Received forward response from agent: {}", agentId);
+        try {
+            // 从payload中解析HTTP响应
+            HttpResponse httpResponse = JsonUtil.fromJson(message.getPayload(), HttpResponse.class);
+
+            // 提取原始消息ID用于匹配请求
+            String originalMessageId = message.getMetadata() != null ?
+                message.getMetadata().get("originalMessageId") : null;
+
+            if (originalMessageId != null) {
+                httpProxyService.handleResponse(originalMessageId, httpResponse);
+            }
+
+            logger.debug("Forward response received from agent: {}, status: {}",
+                agentId, httpResponse.getStatusCode());
+        } catch (Exception e) {
+            logger.error("Failed to handle forward response", e);
+        }
     }
 
     /**

@@ -5,14 +5,18 @@ import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.websocketx.*;
 import io.netty.util.CharsetUtil;
 import org.ljc.agent.config.AgentConfig;
+import org.ljc.agent.service.RequestForwarder;
 import org.ljc.common.model.AgentInfo;
+import org.ljc.common.model.HttpRequest;
+import org.ljc.common.model.HttpResponse;
 import org.ljc.common.model.Message;
 import org.ljc.common.model.MessageType;
 import org.ljc.common.util.JsonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -26,15 +30,18 @@ public class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> 
 
     private final AgentConfig agentConfig;
     private final WebSocketClientHandshaker handshaker;
+    private final RequestForwarder requestForwarder;
     private ChannelPromise handshakeFuture;
     private ScheduledFuture<?> heartbeatFuture;
 
     private boolean connected = false;
     private String agentId;
 
-    public WebSocketClientHandler(AgentConfig agentConfig, WebSocketClientHandshaker handshaker) {
+    public WebSocketClientHandler(AgentConfig agentConfig, WebSocketClientHandshaker handshaker,
+                                   RequestForwarder requestForwarder) {
         this.agentConfig = agentConfig;
         this.handshaker = handshaker;
+        this.requestForwarder = requestForwarder;
         this.agentId = agentConfig.getAgentId();
         if (this.agentId == null || this.agentId.isEmpty()) {
             this.agentId = UUID.randomUUID().toString();
@@ -131,17 +138,106 @@ public class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> 
         if (message.isSuccess()) {
             connected = true;
             logger.info("Agent registered successfully: {}", agentId);
+
+            // 如果payload中有AgentInfo，更新本地ID
+            if (message.getPayload() != null && !message.getPayload().isEmpty()) {
+                try {
+                    AgentInfo info = JsonUtil.fromJson(message.getPayload(), AgentInfo.class);
+                    if (info != null && info.getAgentId() != null) {
+                        this.agentId = info.getAgentId();
+                    }
+                } catch (Exception e) {
+                    logger.warn("Failed to parse AgentInfo from registration response");
+                }
+            }
         } else {
             logger.error("Registration failed: {}", message.getErrorMessage());
         }
     }
 
     /**
-     * 处理转发请求
+     * 处理转发请求 - 实际转发到内网AI模型
      */
     private void handleForwardRequest(Message message, Channel ch) {
-        logger.info("Received forward request: {}", message.getId());
-        // TODO: 转发请求到内网AI模型，并返回响应
+        logger.info("Received forward request: {}, payload: {}", message.getId(), message.getPayload());
+
+        try {
+            // 解析HTTP请求
+            HttpRequest httpRequest = JsonUtil.fromJson(message.getPayload(), HttpRequest.class);
+
+            if (httpRequest == null) {
+                sendErrorResponse(ch, message.getId(), "Invalid request payload");
+                return;
+            }
+
+            // 检查目标是否允许访问
+            if (!isTargetAllowed(httpRequest.getUrl())) {
+                sendErrorResponse(ch, message.getId(), "Target URL not allowed");
+                return;
+            }
+
+            // 转发请求到内网AI模型
+            logger.info("Forwarding request to: {}", httpRequest.getUrl());
+            HttpResponse httpResponse = requestForwarder.forward(httpRequest);
+
+            // 发送响应回Server
+            sendForwardResponse(ch, message.getId(), httpResponse);
+
+            logger.info("Request forwarded, response status: {}", httpResponse.getStatusCode());
+
+        } catch (Exception e) {
+            logger.error("Failed to forward request", e);
+            sendErrorResponse(ch, message.getId(), "Forward failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 检查目标URL是否允许访问
+     */
+    private boolean isTargetAllowed(String url) {
+        String[] allowed = agentConfig.getAllowedTargets();
+        if (allowed == null || allowed.length == 0) {
+            return false;
+        }
+
+        for (String pattern : allowed) {
+            if (pattern.equals("*") || pattern.equals(".*")) {
+                return true;
+            }
+            // 简单的前缀匹配
+            if (url.startsWith(pattern) || pattern.equals("*")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 发送转发响应
+     */
+    private void sendForwardResponse(Channel ch, String originalMessageId, HttpResponse httpResponse) {
+        Message response = new Message(MessageType.FORWARD_RESPONSE);
+        response.setSenderId(agentId);
+        response.setPayload(JsonUtil.toJson(httpResponse));
+
+        // 添加原始消息ID用于关联
+        Map<String, String> metadata = new HashMap<>();
+        metadata.put("originalMessageId", originalMessageId);
+        response.setMetadata(metadata);
+
+        ch.writeAndFlush(new TextWebSocketFrame(JsonUtil.toJson(response)));
+    }
+
+    /**
+     * 发送错误响应
+     */
+    private void sendErrorResponse(Channel ch, String originalMessageId, String errorMessage) {
+        HttpResponse errorResponse = new HttpResponse();
+        errorResponse.setStatusCode(500);
+        errorResponse.setStatusMessage("Internal Error");
+        errorResponse.setBody("{\"error\":\"" + errorMessage + "\"}");
+
+        sendForwardResponse(ch, originalMessageId, errorResponse);
     }
 
     /**
@@ -160,7 +256,7 @@ public class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> 
         registerMsg.setPayload(JsonUtil.toJson(agentInfo));
 
         ch.writeAndFlush(new TextWebSocketFrame(JsonUtil.toJson(registerMsg)));
-        logger.info("Sending registration request");
+        logger.info("Sending registration request for agent: {}", agentId);
     }
 
     /**
