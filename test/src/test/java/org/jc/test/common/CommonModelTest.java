@@ -152,7 +152,7 @@ class CommonModelTest {
         assertEquals("HEARTBEAT", MessageType.HEARTBEAT.name());
         assertEquals("FORWARD_REQUEST", MessageType.FORWARD_REQUEST.name());
         assertEquals("FORWARD_RESPONSE", MessageType.FORWARD_RESPONSE.name());
-        assertEquals(MessageType.values().length, 11);
+        assertEquals(MessageType.values().length, 10);
     }
 
     /**

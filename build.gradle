@@ -89,3 +89,51 @@ tasks.register('printVersion') {
         println "Project Version: ${version}"
     }
 }
+// 打包任务 - 将 agent、server、deploy 打包到一起
+tasks.register('packageDistribution') {
+    group = 'distribution'
+    description = 'Package all modules for distribution'
+    dependsOn subprojects*.build
+
+    doLast {
+        def distDir = file("$buildDir/distribution")
+        distDir.mkdirs()
+
+        // 复制各模块的 JAR 文件
+        copy {
+            from file("agent/build/libs/agent-${version}.jar")
+            into "$distDir/agent"
+        }
+        copy {
+            from file("server/build/libs/server-${version}.jar")
+            into "$distDir/server"
+        }
+        copy {
+            from file("deploy/build/libs/deploy-${version}.jar")
+            into "$distDir/deploy"
+        }
+
+        // 复制配置文件
+        copy {
+            from file("agent/src/main/resources")
+            into "$distDir/agent/config"
+        }
+        copy {
+            from file("server/src/main/resources")
+            into "$distDir/server/config"
+        }
+        copy {
+            from file("deploy/src/main/resources")
+            into "$distDir/deploy/config"
+        }
+
+        // 创建启动脚本
+        def binDir = file("$distDir/bin")
+        binDir.mkdirs()
+        file("$binDir/start-agent.sh").text = "#!/bin/bash\ncd \"\$(dirname \"\$0\")/..\"\njava -jar agent/agent-${version}.jar \"\$@\"\n"
+        file("$binDir/start-server.sh").text = "#!/bin/bash\ncd \"\$(dirname \"\$0\")/..\"\njava -jar server/server-${version}.jar \"\$@\"\n"
+        file("$binDir/start-deploy.sh").text = "#!/bin/bash\ncd \"\$(dirname \"\$0\")/..\"\njava -jar deploy/deploy-${version}.jar \"\$@\"\n"
+
+        println "Distribution package created at: $distDir"
+    }
+}

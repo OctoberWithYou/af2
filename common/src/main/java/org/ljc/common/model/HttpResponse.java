@@ -42,6 +42,12 @@ public class HttpResponse {
      */
     private long responseTime;
 
+    /**
+     * 默认构造函数
+     */
+    public HttpResponse() {
+    }
+
     // Getters and Setters
 
     public int getStatusCode() {
