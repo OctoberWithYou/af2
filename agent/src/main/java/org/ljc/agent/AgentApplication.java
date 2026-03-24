@@ -22,6 +22,9 @@ import java.util.concurrent.TimeUnit;
 /**
  * Agent应用启动类
  * 负责启动WebSocket客户端，连接Server并转发AI请求
+ *
+ * @author Claude Opus 4.6
+ * @created 2026-03-23
  */
 public class AgentApplication {
     private static final Logger logger = LoggerFactory.getLogger(AgentApplication.class);
