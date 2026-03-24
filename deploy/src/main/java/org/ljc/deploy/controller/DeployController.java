@@ -1,5 +1,12 @@
 package org.ljc.deploy.controller;
 
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Objects;
+
 import org.ljc.deploy.entity.DeployConfig;
 import org.ljc.deploy.service.DeployService;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +24,16 @@ import java.util.Map;
 public class DeployController {
 
     private final DeployService deployService;
+
+    /**
+     * 返回 Vue 前端页面
+     */
+    @GetMapping("/")
+    public ResponseEntity<String> index() throws IOException {
+        ClassPathResource resource = new ClassPathResource("static/index.html");
+        String content = new String(Objects.requireNonNull(resource.getInputStream()).readAllBytes(), StandardCharsets.UTF_8);
+        return ResponseEntity.ok(content);
+    }
 
     public DeployController(DeployService deployService) {
         this.deployService = deployService;
