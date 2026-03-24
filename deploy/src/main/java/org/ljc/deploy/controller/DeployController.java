@@ -26,13 +26,13 @@ public class DeployController {
     private final DeployService deployService;
 
     /**
-     * 返回 Vue 前端页面
+     * 返回 Vue 前端页面（根路径）
      */
-    @GetMapping("/")
+    @GetMapping(value = {"/", "/index"}, produces = "text/html")
     public ResponseEntity<String> index() throws IOException {
         ClassPathResource resource = new ClassPathResource("static/index.html");
         String content = new String(Objects.requireNonNull(resource.getInputStream()).readAllBytes(), StandardCharsets.UTF_8);
-        return ResponseEntity.ok(content);
+        return ResponseEntity.ok().contentType(org.springframework.http.MediaType.TEXT_HTML).body(content);
     }
 
     public DeployController(DeployService deployService) {
