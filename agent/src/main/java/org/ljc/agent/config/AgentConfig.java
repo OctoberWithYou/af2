@@ -33,14 +33,24 @@ public class AgentConfig {
      */
     private void loadFromSystemProperties() {
         this.agentId = System.getProperty("agent.id", System.getenv("AGENT_ID"));
-        this.name = System.getProperty("agent.name", "AI Forward Agent");
-        this.description = System.getProperty("agent.description", "内网AI模型转发代理");
-        this.serverUrl = System.getProperty("agent.server-url", DEFAULT_SERVER_URL);
-        this.connectTimeout = Integer.parseInt(System.getProperty("agent.connect-timeout", "5000"));
-        this.heartbeatInterval = Integer.parseInt(System.getProperty("agent.heartbeat-interval", "30"));
-        this.reconnectInterval = Integer.parseInt(System.getProperty("agent.reconnect-interval", "10"));
-        this.maxRetries = Integer.parseInt(System.getProperty("agent.max-retries", "5"));
-        this.sslEnabled = Boolean.parseBoolean(System.getProperty("agent.ssl-enabled", "false"));
+        this.name = System.getProperty("agent.name", System.getenv("AGENT_NAME"));
+        if (this.name == null) this.name = "AI Forward Agent";
+        this.description = System.getProperty("agent.description", System.getenv("AGENT_DESCRIPTION"));
+        if (this.description == null) this.description = "内网AI模型转发代理";
+        this.serverUrl = System.getProperty("agent.server-url", System.getenv("AGENT_SERVER_URL"));
+        if (this.serverUrl == null) this.serverUrl = DEFAULT_SERVER_URL;
+        this.connectTimeout = Integer.parseInt(System.getProperty("agent.connect-timeout", System.getenv("AGENT_CONNECT_TIMEOUT") != null ? System.getenv("AGENT_CONNECT_TIMEOUT") : "5000"));
+        this.heartbeatInterval = Integer.parseInt(System.getProperty("agent.heartbeat-interval", System.getenv("AGENT_HEARTBEAT_INTERVAL") != null ? System.getenv("AGENT_HEARTBEAT_INTERVAL") : "30"));
+        this.reconnectInterval = Integer.parseInt(System.getProperty("agent.reconnect-interval", System.getenv("AGENT_RECONNECT_INTERVAL") != null ? System.getenv("AGENT_RECONNECT_INTERVAL") : "10"));
+        this.maxRetries = Integer.parseInt(System.getProperty("agent.max-retries", System.getenv("AGENT_MAX_RETRIES") != null ? System.getenv("AGENT_MAX_RETRIES") : "5"));
+        this.sslEnabled = Boolean.parseBoolean(System.getProperty("agent.ssl-enabled", System.getenv("AGENT_SSL_ENABLED") != null ? System.getenv("AGENT_SSL_ENABLED") : "false"));
+
+        // 支持环境变量配置允许的目标URL (逗号分隔)
+        String targetsEnv = System.getenv("AGENT_ALLOWED_TARGETS");
+        if (targetsEnv != null && !targetsEnv.isEmpty()) {
+            this.allowedTargets = targetsEnv.split(",");
+        }
+
         this.version = System.getProperty("agent.version", "1.0.0");
     }
 

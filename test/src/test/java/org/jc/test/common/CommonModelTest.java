@@ -142,4 +142,53 @@ class CommonModelTest {
         assertNotNull(prettyJson);
         assertTrue(prettyJson.contains("\n"));
     }
+
+    /**
+     * 测试MessageType枚举
+     */
+    @Test
+    void testMessageType() {
+        assertEquals("REGISTER", MessageType.REGISTER.name());
+        assertEquals("HEARTBEAT", MessageType.HEARTBEAT.name());
+        assertEquals("FORWARD_REQUEST", MessageType.FORWARD_REQUEST.name());
+        assertEquals("FORWARD_RESPONSE", MessageType.FORWARD_RESPONSE.name());
+        assertEquals(MessageType.values().length, 11);
+    }
+
+    /**
+     * 测试HttpResponse错误状态判断
+     */
+    @Test
+    void testHttpResponseErrorStatus() {
+        HttpResponse response200 = new HttpResponse();
+        response200.setStatusCode(200);
+        assertTrue(response200.isSuccess());
+
+        HttpResponse response201 = new HttpResponse();
+        response201.setStatusCode(201);
+        assertTrue(response201.isSuccess());
+
+        HttpResponse response400 = new HttpResponse();
+        response400.setStatusCode(400);
+        assertFalse(response400.isSuccess());
+
+        HttpResponse response500 = new HttpResponse();
+        response500.setStatusCode(500);
+        assertFalse(response500.isSuccess());
+    }
+
+    /**
+     * 测试AgentInfo允许目标为空
+     */
+    @Test
+    void testAgentInfoEmptyAllowedTargets() {
+        AgentInfo info = new AgentInfo();
+        info.setAgentId("agent-002");
+        info.setAllowedTargets(new String[]{});
+
+        String json = JsonUtil.toJson(info);
+        AgentInfo deserialized = JsonUtil.fromJson(json, AgentInfo.class);
+        assertNotNull(deserialized.getAllowedTargets());
+        assertEquals(0, deserialized.getAllowedTargets().length);
+    }
 }

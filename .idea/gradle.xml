@@ -6,6 +6,16 @@
         <option name="distributionType" value="LOCAL" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="gradleHome" value="D:\user\application\gradle9\gradle-9.0.0" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/agent" />
+            <option value="$PROJECT_DIR$/common" />
+            <option value="$PROJECT_DIR$/deploy" />
+            <option value="$PROJECT_DIR$/server" />
+            <option value="$PROJECT_DIR$/test" />
+          </set>
+        </option>
       </GradleProjectSettings>
     </option>
   </component>

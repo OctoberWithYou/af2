@@ -1,5 +1,10 @@
 plugins {
     id 'java'
+    id 'application'
+}
+
+application {
+    mainClass = 'org.ljc.agent.AgentApplication'
 }
 
 dependencies {
@@ -14,18 +19,28 @@ dependencies {
 
     // SLF4J日志
     implementation 'org.slf4j:slf4j-api:2.0.9'
+    implementation 'ch.qos.logback:logback-classic:1.4.14'
 
     // 测试
     testImplementation "org.junit.jupiter:junit-jupiter:${rootProject.junitVersion}"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
-    testImplementation "io.rest-assured:rest-assured:${rootProject.restAssuredVersion}"
 
     // Allure测试报告
     testImplementation "io.qameta.allure:allure-junit5:${rootProject.allureVersion}"
-    testImplementation "io.qameta.allure:allure-rest-assured:${rootProject.allureVersion}"
 }
 
 test {
     useJUnitPlatform()
     systemProperty 'allure.results.directory', 'build/reports/allure-results'
+}
+
+jar {
+    manifest {
+        attributes(
+            'Main-Class': 'org.ljc.agent.AgentApplication',
+            'Implementation-Title': 'AI Forward Agent',
+            'Implementation-Version': version,
+            'Built-By': 'ai-forward2'
+        )
+    }
 }

@@ -3,8 +3,9 @@ plugins {
 }
 
 dependencies {
-    // 引入common模块进行测试
+    // 引入模块进行测试
     implementation project(':common')
+    implementation project(':agent')
 
     // 测试框架
     testImplementation "org.junit.jupiter:junit-jupiter:${rootProject.junitVersion}"
@@ -15,6 +16,9 @@ dependencies {
 
     // JSON处理
     testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.16.0'
+
+    // Netty
+    testImplementation "io.netty:netty-all:${rootProject.nettyVersion}"
 }
 
 test {
