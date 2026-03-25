@@ -6,10 +6,13 @@
     <title>AI Forward 部署管理</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea, #764ba2); min-height: 100vh; padding: 20px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: linear-gradient(135deg, #667eea, #764ba2); min-height: 100vh; padding: 20px; }
         .container { max-width: 1400px; margin: 0 auto; }
-        .header { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
         .header h1 { margin: 0; color: #333; }
+        .user-info { display: flex; align-items: center; gap: 10px; }
+        .user-info span { color: #666; }
+        .logout-btn { background: #f56c6c; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; }
         .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 20px; }
         .stat-card { background: white; border-radius: 10px; padding: 20px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .stat-value { font-size: 36px; font-weight: bold; }
@@ -33,346 +36,82 @@
         .status-stopped { background: #909399; color: white; }
         .status-deploying { background: #e6a23c; color: white; }
         .empty { text-align: center; padding: 40px; color: #999; }
-        /* Dialog styles */
         .dialog-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; }
         .dialog-overlay.active { display: block; }
-        .dialog { background: white; margin: 50px auto; padding: 30px; border-radius: 10px; max-width: 600px; }
-        .dialog h3 { margin-bottom: 20px; }
+        .dialog { background: white; margin: 50px auto; padding: 30px; border-radius: 10px; max-width: 500px; }
+        .dialog h3 { margin-bottom: 20px; color: #333; }
         .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
-        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
-        .form-group textarea { min-height: 80px; font-family: monospace; }
-        .form-group .help { font-size: 12px; color: #999; margin-top: 3px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; color: #333; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
         .dialog-actions { text-align: right; margin-top: 20px; }
-        /* Config display */
         .config-display { font-family: monospace; font-size: 12px; background: #f5f7fa; padding: 4px 8px; border-radius: 3px; cursor: pointer; }
-        .config-display:hover { background: #e6a23c; color: white; }
+        .alert { padding: 12px 20px; border-radius: 4px; margin-bottom: 15px; }
+        .alert-warning { background: #fef0f0; color: #f56c6c; border: 1px solid #fde2e2; }
+        .alert-success { background: #f0f9ff; color: #67c23a; border: 1px solid #e1f3d8; }
+        .alert-error { background: #fef0f0; color: #f56c6c; border: 1px solid #fde2e2; }
+        .login-container { max-width: 400px; margin: 100px auto; }
+        .login-card { background: white; border-radius: 10px; padding: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .login-card h2 { text-align: center; margin-bottom: 30px; color: #333; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div id="loginPage" class="container login-container">
+        <div class="login-card">
+            <h2>AI Forward 部署管理</h2>
+            <div id="loginAlert" class="alert alert-error hidden"></div>
+            <div class="form-group">
+                <label>用户名</label>
+                <input type="text" id="username" placeholder="请输入用户名" value="admin">
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" id="password" placeholder="请输入密码" value="admin">
+            </div>
+            <button class="btn btn-primary" style="width:100%" onclick="login()">登录</button>
+        </div>
+    </div>
+    <div id="mainPage" class="container hidden">
         <div class="header">
             <h1>AI Forward 部署管理平台</h1>
+            <div class="user-info">
+                <span id="currentUser">admin</span>
+                <button class="logout-btn" onclick="logout()">退出</button>
+            </div>
         </div>
         <div class="stats">
-            <div class="stat-card">
-                <div class="stat-value blue" id="totalAgents">-</div>
-                <div class="stat-label">Agent 总数</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value green" id="runningAgents">-</div>
-                <div class="stat-label">运行中 Agent</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value blue" id="totalServers">-</div>
-                <div class="stat-label">Server 总数</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value green" id="runningServers">-</div>
-                <div class="stat-label">运行中 Server</div>
-            </div>
+            <div class="stat-card"><div class="stat-value blue" id="totalAgents">-</div><div class="stat-label">Agent 总数</div></div>
+            <div class="stat-card"><div class="stat-value green" id="runningAgents">-</div><div class="stat-label">运行中 Agent</div></div>
+            <div class="stat-card"><div class="stat-value blue" id="totalServers">-</div><div class="stat-label">Server 总数</div></div>
+            <div class="stat-card"><div class="stat-value green" id="runningServers">-</div><div class="stat-label">运行中 Server</div></div>
         </div>
         <div class="content">
-            <div class="toolbar">
-                <h2>部署配置</h2>
-                <button class="btn btn-primary" onclick="showAddDialog()">+ 新建配置</button>
-            </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th width="60">ID</th>
-                        <th>名称</th>
-                        <th width="100">类型</th>
-                        <th width="100">状态</th>
-                        <th>配置</th>
-                        <th width="220">操作</th>
-                    </tr>
-                </thead>
-                <tbody id="configTable">
-                    <tr><td colspan="6" class="empty">加载中...</td></tr>
-                </tbody>
-            </table>
+            <div class="toolbar"><h2>部署配置</h2><button class="btn btn-primary" onclick="showAddDialog()">+ 新建配置</button></div>
+            <table><thead><tr><th width="60">ID</th><th>名称</th><th width="100">类型</th><th width="100">状态</th><th>配置</th><th width="220">操作</th></tr></thead><tbody id="configTable"></tbody></table>
         </div>
     </div>
-
-    <!-- 新增/编辑配置弹窗 -->
-    <div id="configDialog" class="dialog-overlay">
-        <div class="dialog">
-            <h3 id="dialogTitle">新建部署配置</h3>
-            <input type="hidden" id="editId">
-
-            <div class="form-group">
-                <label>名称 *</label>
-                <input type="text" id="cfgName" placeholder="例如：测试用 Agent">
-            </div>
-
-            <div class="form-group">
-                <label>类型 *</label>
-                <select id="cfgType" onchange="onTypeChange()">
-                    <option value="AGENT">Agent（内网转发客户端）</option>
-                    <option value="SERVER">Server（公网转发服务端）</option>
-                </select>
-            </div>
-
-            <!-- Agent 配置选项 -->
-            <div id="agentOptions">
-                <div class="form-group">
-                    <label>Server 地址</label>
-                    <input type="text" id="cfgServerHost" placeholder="localhost 或 IP 地址" value="localhost">
-                </div>
-                <div class="form-group">
-                    <label>Server WebSocket 端口</label>
-                    <input type="number" id="cfgServerPort" placeholder="8888" value="8888">
-                </div>
-                <div class="form-group">
-                    <label>Agent 名称</label>
-                    <input type="text" id="cfgAgentName" placeholder="AI Agent">
-                </div>
-                <div class="form-group">
-                    <label>允许转发目标（逗号分隔）</label>
-                    <input type="text" id="cfgAllowedTargets" placeholder="* 或具体URL，如 https://api.openai.com/*">
-                </div>
-            </div>
-
-            <!-- Server 配置选项 -->
-            <div id="serverOptions" style="display:none;">
-                <div class="form-group">
-                    <label>HTTP 端口</label>
-                    <input type="number" id="cfgHttpPort" placeholder="8080" value="8080">
-                </div>
-                <div class="form-group">
-                    <label>WebSocket 端口</label>
-                    <input type="number" id="cfgWsPort" placeholder="8888" value="8888">
-                </div>
-            </div>
-
-            <div class="dialog-actions">
-                <button class="btn" onclick="closeDialog()">取消</button>
-                <button class="btn btn-primary" onclick="saveConfig()">保存</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 查看配置弹窗 -->
-    <div id="viewDialog" class="dialog-overlay">
-        <div class="dialog">
-            <h3>查看配置详情</h3>
-            <div class="form-group">
-                <label>名称</label>
-                <div id="viewName" style="padding:8px;background:#f5f7fa;border-radius:4px;"></div>
-            </div>
-            <div class="form-group">
-                <label>类型</label>
-                <div id="viewType" style="padding:8px;background:#f5f7fa;border-radius:4px;"></div>
-            </div>
-            <div class="form-group">
-                <label>JSON 配置</label>
-                <textarea id="viewConfig" readonly style="min-height:150px;background:#f5f7fa;"></textarea>
-            </div>
-            <div class="dialog-actions">
-                <button class="btn btn-primary" onclick="closeViewDialog()">关闭</button>
-            </div>
-        </div>
-    </div>
-
+    <div id="configDialog" class="dialog-overlay"><div class="dialog"><h3 id="dialogTitle">新建配置</h3><div class="form-group"><label>名称</label><input type="text" id="configName"></div><div class="form-group"><label>类型</label><select id="configType"><option value="AGENT">Agent</option><option value="SERVER">Server</option></select></div><div class="form-group"><label>配置 JSON</label><textarea id="configJson"></textarea></div><div class="dialog-actions"><button class="btn btn-info" onclick="hideDialog()">取消</button><button class="btn btn-primary" onclick="saveConfig()">保存</button></div></div></div>
+    <div id="passwordDialog" class="dialog-overlay"><div class="dialog"><h3>修改密码</h3><div id="passwordAlert" class="alert alert-warning"><strong>首次登录提示：</strong>为了您的账户安全，请修改默认密码。</div><div class="form-group"><label>原密码</label><input type="password" id="oldPassword"></div><div class="form-group"><label>新密码</label><input type="password" id="newPassword"></div><div class="form-group"><label>确认密码</label><input type="password" id="confirmPassword"></div><div class="dialog-actions"><button class="btn btn-info" onclick="hidePasswordDialog()">稍后修改</button><button class="btn btn-primary" onclick="submitPasswordChange()">保存</button></div></div></div>
     <script>
-    const API_BASE = '/api/deploy';
-
-    // 加载统计数据
-    async function loadStats() {
-        try {
-            const r = await fetch(API_BASE + '/stats');
-            const data = await r.json();
-            if (data.success) {
-                document.getElementById('totalAgents').textContent = data.totalAgents || 0;
-                document.getElementById('runningAgents').textContent = data.runningAgents || 0;
-                document.getElementById('totalServers').textContent = data.totalServers || 0;
-                document.getElementById('runningServers').textContent = data.runningServers || 0;
-            }
-        } catch (e) {
-            console.error('加载统计失败:', e);
-        }
-    }
-
-    // 加载配置列表
-    async function loadConfigs() {
-        try {
-            const r = await fetch(API_BASE + '/configs');
-            const data = await r.json();
-            if (data.success) {
-                renderConfigs(data.data || []);
-            }
-        } catch (e) {
-            console.error('加载配置失败:', e);
-            document.getElementById('configTable').innerHTML = '<tr><td colspan="6" class="empty">加载失败</td></tr>';
-        }
-    }
-
-    // 渲染配置表格
-    function renderConfigs(configs) {
-        const tbody = document.getElementById('configTable');
-        if (!configs || configs.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="empty">暂无配置，点击"新建配置"添加</td></tr>';
-            return;
-        }
-        tbody.innerHTML = configs.map(c => `
-            <tr>
-                <td>${c.id}</td>
-                <td>${c.name || ''}</td>
-                <td>${c.type === 'AGENT' ? 'Agent' : 'Server'}</td>
-                <td><span class="status status-${(c.status || '').toLowerCase()}">${c.status || 'STOPPED'}</span></td>
-                <td><span class="config-display" onclick="viewConfig(${c.id})">点击查看配置</span></td>
-                <td>
-                    <button class="btn btn-success" onclick="deploy(${c.id})" ${c.status === 'RUNNING' ? 'disabled' : ''}>部署</button>
-                    <button class="btn btn-warning" onclick="stop(${c.id})" ${c.status !== 'RUNNING' ? 'disabled' : ''}>停止</button>
-                    <button class="btn btn-danger" onclick="remove(${c.id})">删除</button>
-                </td>
-            </tr>
-        `).join('');
-    }
-
-    // 类型切换时显示/隐藏配置选项
-    function onTypeChange() {
-        const type = document.getElementById('cfgType').value;
-        document.getElementById('agentOptions').style.display = type === 'AGENT' ? 'block' : 'none';
-        document.getElementById('serverOptions').style.display = type === 'SERVER' ? 'block' : 'none';
-    }
-
-    // 显示新增弹窗
-    function showAddDialog() {
-        document.getElementById('dialogTitle').textContent = '新建部署配置';
-        document.getElementById('editId').value = '';
-        document.getElementById('cfgName').value = '';
-        document.getElementById('cfgType').value = 'AGENT';
-        onTypeChange();
-        // 默认值
-        document.getElementById('cfgServerHost').value = 'localhost';
-        document.getElementById('cfgServerPort').value = '8888';
-        document.getElementById('cfgHttpPort').value = '8080';
-        document.getElementById('cfgWsPort').value = '8888';
-        document.getElementById('cfgAgentName').value = 'AI Agent';
-        document.getElementById('cfgAllowedTargets').value = '*';
-        document.getElementById('configDialog').classList.add('active');
-    }
-
-    // 关闭弹窗
-    function closeDialog() {
-        document.getElementById('configDialog').classList.remove('active');
-    }
-
-    // 关闭查看弹窗
-    function closeViewDialog() {
-        document.getElementById('viewDialog').classList.remove('active');
-    }
-
-    // 构建配置JSON
-    function buildConfigJson() {
-        const type = document.getElementById('cfgType').value;
-        const config = {};
-
-        if (type === 'AGENT') {
-            config.serverHost = document.getElementById('cfgServerHost').value || 'localhost';
-            config.serverPort = parseInt(document.getElementById('cfgServerPort').value) || 8888;
-            config.agentName = document.getElementById('cfgAgentName').value || 'AI Agent';
-            config.allowedTargets = document.getElementById('cfgAllowedTargets').value || '*';
-        } else {
-            config.httpPort = parseInt(document.getElementById('cfgHttpPort').value) || 8080;
-            config.wsPort = parseInt(document.getElementById('cfgWsPort').value) || 8888;
-        }
-
-        return JSON.stringify(config, null, 2);
-    }
-
-    // 保存配置
-    async function saveConfig() {
-        const name = document.getElementById('cfgName').value;
-        const type = document.getElementById('cfgType').value;
-        const configJson = buildConfigJson();
-
-        if (!name) { alert('请输入名称'); return; }
-
-        try {
-            const r = await fetch(API_BASE + '/configs', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, type, configJson })
-            });
-            const data = await r.json();
-            alert(data.success ? '保存成功' : '保存失败: ' + data.message);
-            if (data.success) {
-                closeDialog();
-                loadConfigs();
-                loadStats();
-            }
-        } catch (e) {
-            alert('保存失败');
-        }
-    }
-
-    // 查看配置详情
-    async function viewConfig(id) {
-        try {
-            const r = await fetch(API_BASE + '/configs/' + id);
-            const data = await r.json();
-            if (data.success && data.data) {
-                document.getElementById('viewName').textContent = data.data.name || '';
-                document.getElementById('viewType').textContent = data.data.type === 'AGENT' ? 'Agent' : 'Server';
-                document.getElementById('viewConfig').value = data.data.configJson || '{}';
-                document.getElementById('viewDialog').classList.add('active');
-            }
-        } catch (e) {
-            alert('加载配置失败');
-        }
-    }
-
-    // 部署
-    async function deploy(id) {
-        if (!confirm('确认部署？部署将启动相应的 Agent 或 Server 进程。')) return;
-        try {
-            const r = await fetch(API_BASE + '/configs/' + id + '/deploy', { method: 'POST' });
-            const data = await r.json();
-            alert(data.success ? '部署已启动' : '部署失败: ' + data.message);
-            loadConfigs();
-            loadStats();
-        } catch (e) {
-            alert('部署失败');
-        }
-    }
-
-    // 停止
-    async function stop(id) {
-        if (!confirm('确认停止？')) return;
-        try {
-            const r = await fetch(API_BASE + '/configs/' + id + '/stop', { method: 'POST' });
-            const data = await r.json();
-            alert(data.success ? '已停止' : '停止失败: ' + data.message);
-            loadConfigs();
-            loadStats();
-        } catch (e) {
-            alert('停止失败');
-        }
-    }
-
-    // 删除
-    async function remove(id) {
-        if (!confirm('确认删除？此操作不可恢复。')) return;
-        try {
-            const r = await fetch(API_BASE + '/configs/' + id, { method: 'DELETE' });
-            const data = await r.json();
-            alert(data.success ? '删除成功' : '删除失败: ' + data.message);
-            loadConfigs();
-            loadStats();
-        } catch (e) {
-            alert('删除失败');
-        }
-    }
-
-    // 初始化
-    loadStats();
-    loadConfigs();
-
-    // 每10秒刷新
-    setInterval(() => { loadStats(); loadConfigs(); }, 10000);
+const API_BASE='/api/deploy';let authToken=localStorage.getItem("authToken")||"",currentuser=localStorage.getItem("currentUser")||"",editingId=null;
+window.onload=function(){authToken?checkAuth():showLogin()};
+function showLogin(){document.getElementById("loginPage").classList.remove("hidden");document.getElementById("mainPage").classList.add("hidden")}
+function showMain(){document.getElementById("loginPage").classList.add("hidden");document.getElementById("mainPage").classList.remove("hidden");loadStats();loadConfigs()}
+async function checkAuth(){try{const r=await fetch(API_BASE+"/auth/me",{headers:{"Authorization":"Bearer "+authToken}}),d=await r.json();if(d.success){currentuser=d.data.username;localStorage.setItem("currentUser",currentuser);showMain();d.data.mustChangePassword&&showPasswordDialog(true)}else logout()}catch(e){logout()}}
+async function login(){const u=document.getElementById("username").value,p=document.getElementById("password").value,a=document.getElementById("loginAlert");try{const r=await fetch("/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:u,password:p})}),d=await r.json();if(d.success){authToken=d.token;currentuser=d.username;localStorage.setItem("authToken",authToken);localStorage.setItem("currentUser",currentuser);showMain();d.mustChangePassword&&showPasswordDialog(true)}else{a.textContent=d.message;a.classList.remove("hidden")}}catch(e){a.textContent="登录失败";a.classList.remove("hidden")}}
+function logout(){fetch("/api/auth/logout",{method:"POST",headers:{"Authorization":"Bearer "+authToken}}).catch(()=>{});authToken=null;currentuser=null;localStorage.removeItem("authToken");localStorage.removeItem("currentUser");showLogin()}
+function showPasswordDialog(){document.getElementById("passwordDialog").classList.add("active")}
+function hidePasswordDialog(){document.getElementById("passwordDialog").classList.remove("active")}
+async function submitPasswordChange(){const o=document.getElementById("oldPassword").value,n=document.getElementById("newPassword").value,c=document.getElementById("confirmPassword").value,a=document.getElementById("passwordAlert");if(n.length<6){a.textContent="密码至少 6 位";a.className="alert alert-error";a.classList.remove("hidden");return}if(n!==c){a.textContent="密码不一致";a.className="alert alert-error";a.classList.remove("hidden");return}try{const r=await fetch("/api/auth/change-password",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+authToken},body:JSON.stringify({oldPassword:o,newPassword:n})}),d=await r.json();if(d.success){a.textContent="密码修改成功";a.className="alert alert-success";a.classList.remove("hidden");setTimeout(hidePasswordDialog,1e3)}else{a.textContent=d.message;a.className="alert alert-error";a.classList.remove("hidden")}}catch(e){a.textContent="修改失败";a.className="alert alert-error";a.classList.remove("hidden")}}
+async function loadStats(){try{const r=await fetch(API_BASE+"/stats",{headers:{"Authorization":"Bearer "+authToken}}),d=await r.json();d.success&&(document.getElementById("totalAgents").textContent=d.totalAgents||0,document.getElementById("runningAgents").textContent=d.runningAgents||0,document.getElementById("totalServers").textContent=d.totalServers||0,document.getElementById("runningServers").textContent=d.runningServers||0)}catch(e){}}
+async function loadConfigs(){try{const r=await fetch(API_BASE+"/configs",{headers:{"Authorization":"Bearer "+authToken}}),d=await r.json(),t=document.getElementById("configTable");if(d.success&&d.data&&d.data.length>0)t.innerHTML=d.data.map(c=>"<tr><td>"+c.id+"</td><td>"+(c.name||"")+"</td><td>"+(c.type==="AGENT"?"Agent":"Server")+"</td><td><span class=\"status status-"+(c.status||"stopped").toLowerCase()+"\">"+(c.status||"STOPPED")+"</span></td><td><span class=\"config-display\" onclick='alert("+JSON.stringify(c.configJson||"{}")+")'>查看</span></td><td><button class=\"btn btn-success\" onclick=\"deploy("+c.id+")\" "+(c.status==="RUNNING"?"disabled":"")+">部署</button><button class=\"btn btn-warning\" onclick=\"stop("+c.id+")\" "+(c.status!=="RUNNING"?"disabled":"")+">停止</button><button class=\"btn btn-info\" onclick=\"editConfig("+c.id+")\">编辑</button><button class=\"btn btn-danger\" onclick=\"deleteConfig("+c.id+")\">删除</button></td></tr>").join("");else t.innerHTML="<tr><td colspan=\"6\" class=\"empty\">暂无配置</td></tr>"}catch(e){}}
+function showAddDialog(){editingId=null;document.getElementById("dialogTitle").textContent="新建配置";document.getElementById("configName").value="";document.getElementById("configType").value="AGENT";document.getElementById("configJson").value="";document.getElementById("configDialog").classList.add("active")}
+async function editConfig(id){editingId=id;try{const r=await fetch(API_BASE+"/configs/"+id,{headers:{"Authorization":"Bearer "+authToken}}),d=await r.json();d.success&&d.data&&(document.getElementById("dialogTitle").textContent="编辑配置",document.getElementById("configName").value=d.data.name||"",document.getElementById("configType").value=d.data.type||"AGENT",document.getElementById("configJson").value=d.data.configJson||"",document.getElementById("configDialog").classList.add("active"))}catch(e){}}
+async function saveConfig(){const n=document.getElementById("configName").value,t=document.getElementById("configType").value,j=document.getElementById("configJson").value;if(!n){alert("请输入名称");return;}try{await fetch(API_BASE+"/configs"+(editingId?"/"+editingId:""),{method:editingId?"PUT":"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+authToken},body:JSON.stringify({name:n,type:t,configJson:j})});hideDialog();loadConfigs();loadStats()}catch(e){alert("保存失败")}}
+async function deploy(id){try{const r=await fetch(API_BASE+"/configs/"+id+"/deploy",{method:"POST",headers:{"Authorization":"Bearer "+authToken}}),d=await r.json();alert(d.success?"部署已启动":"部署失败："+(d.message||""));;loadConfigs();loadStats()}catch(e){alert("部署失败")}}
+async function stop(id){try{await fetch(API_BASE+"/configs/"+id+"/stop",{method:"POST",headers:{"Authorization":"Bearer "+authToken}});loadConfigs();loadStats()}catch(e){alert("停止失败")}}
+async function deleteConfig(id){if(!confirm("确认删除？"))return;try{await fetch(API_BASE+"/configs/"+id,{method:"DELETE",headers:{"Authorization":"Bearer "+authToken}});loadConfigs();loadStats()}catch(e){alert("删除失败")}}
+function hideDialog(){document.getElementById("configDialog").classList.remove("active")}
     </script>
 </body>
 </html>

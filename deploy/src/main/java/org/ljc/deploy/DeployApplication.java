@@ -16,12 +16,12 @@ import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
 import javax.sql.DataSource;
 
 /**
- * Deploy应用启动类
- * 提供部署管理REST API和Web界面
+ * Deploy 应用启动类
+ * 提供部署管理 REST API 和 Web 界面
  *
  * 约定大于配置:
- * - 默认端口: 8081
- * - 默认使用嵌入式H2数据库
+ * - 默认端口：8081
+ * - 默认使用嵌入式 H2 数据库
  * - 无需配置文件即可启动
  *
  * @author Claude Opus 4.6
@@ -45,7 +45,7 @@ public class DeployApplication {
     }
 
     /**
-     * 嵌入式H2数据库（约定配置）
+     * 嵌入式 H2 数据库（约定配置）
      */
     @Bean
     @Primary
@@ -62,7 +62,7 @@ public class DeployApplication {
     @Bean
     public JdbcTemplate jdbcTemplate(DataSource dataSource) {
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-        // 创建表（如果不存在）
+        // 创建部署配置表（如果不存在）
         jdbc.execute("""
             CREATE TABLE IF NOT EXISTS deploy_config (
                 id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -73,6 +73,17 @@ public class DeployApplication {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 created_by VARCHAR(100)
+            )
+            """);
+        // 创建用户表（如果不存在）
+        jdbc.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(100) NOT NULL UNIQUE,
+                password VARCHAR(255) NOT NULL,
+                must_change_password BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             """);
         return jdbc;
