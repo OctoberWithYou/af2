@@ -1,31 +1,73 @@
 package org.ljc.test.deploy;
 
 import io.restassured.http.ContentType;
+import io.restassured.http.Header;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.*;
 
 /**
- * Deploy API黑盒测试
+ * Deploy API 黑盒测试
  * 测试部署管理接口功能
  * 端到端测试覆盖前端界面交互场景
+ *
+ * 运行方式:
+ * 1. 启动 deploy 服务：./gradlew :deploy:bootRun
+ * 2. 运行测试：./gradlew :test:apiTest -PrunApiTests=true
  */
 class DeployApiTest {
 
-    // 注意: 测试前需要先启动 deploy 服务
-    // 运行命令: ./gradlew :deploy:bootRun
-    // 测试命令: ./gradlew :test:test --tests "org.ljc.test.deploy.DeployApiTest"
     private static final String BASE_URL = "http://localhost:8081";
-    private static final String API_BASE = BASE_URL + "/api/deploy";
+    private static final String API_BASE = BASE_URL + "/api";
+    private static String authToken = "";
+
+    /**
+     * 测试前登录获取 token
+     */
+    @BeforeAll
+    static void login() {
+        // 尝试默认密码 admin
+        String token = given()
+            .contentType(ContentType.JSON)
+            .body("{\"username\":\"admin\",\"password\":\"admin\"}")
+        .when()
+            .post(API_BASE + "/auth/login")
+        .then()
+            .statusCode(200)
+            .extract()
+            .path("token");
+
+        if (token == null) {
+            // 尝试旧密码 admin123
+            token = given()
+                .contentType(ContentType.JSON)
+                .body("{\"username\":\"admin\",\"password\":\"admin123\"}")
+            .when()
+                .post(API_BASE + "/auth/login")
+            .then()
+                .statusCode(200)
+                .extract()
+                .path("token");
+        }
+
+        authToken = token;
+    }
+
+    private Header authHeader() {
+        return new Header("Authorization", "Bearer " + authToken);
+    }
 
     /**
      * 测试获取部署配置列表
      */
     @Test
     void testGetConfigs() {
-        when()
-            .get(API_BASE + "/configs")
+        given()
+            .header(authHeader())
+        .when()
+            .get(API_BASE + "/deploy/configs")
         .then()
             .statusCode(200)
             .body("success", is(true))
@@ -37,8 +79,10 @@ class DeployApiTest {
      */
     @Test
     void testGetStats() {
-        when()
-            .get(API_BASE + "/stats")
+        given()
+            .header(authHeader())
+        .when()
+            .get(API_BASE + "/deploy/stats")
         .then()
             .statusCode(200)
             .body("success", is(true))
@@ -47,17 +91,18 @@ class DeployApiTest {
     }
 
     /**
-     * 测试创建Agent部署配置
+     * 测试创建 Agent 部署配置
      */
     @Test
     void testCreateAgentConfig() {
         String configJson = "{\"serverUrl\":\"ws://localhost:8888/ws\",\"agentId\":\"test-agent\"}";
 
         given()
+            .header(authHeader())
             .contentType(ContentType.JSON)
             .body("{\"name\":\"Test Agent\",\"type\":\"AGENT\",\"configJson\":\"" + configJson + "\"}")
         .when()
-            .post(API_BASE + "/configs")
+            .post(API_BASE + "/deploy/configs")
         .then()
             .statusCode(200)
             .body("success", is(true))
@@ -67,17 +112,18 @@ class DeployApiTest {
     }
 
     /**
-     * 测试创建Server部署配置
+     * 测试创建 Server 部署配置
      */
     @Test
     void testCreateServerConfig() {
         String configJson = "{\"port\":8080,\"wsPort\":8888}";
 
         given()
+            .header(authHeader())
             .contentType(ContentType.JSON)
             .body("{\"name\":\"Test Server\",\"type\":\"SERVER\",\"configJson\":\"" + configJson + "\"}")
         .when()
-            .post(API_BASE + "/configs")
+            .post(API_BASE + "/deploy/configs")
         .then()
             .statusCode(200)
             .body("success", is(true))
@@ -90,24 +136,27 @@ class DeployApiTest {
      */
     @Test
     void testGetConfigNotFound() {
-        when()
-            .get(API_BASE + "/configs/99999")
+        given()
+            .header(authHeader())
+        .when()
+            .get(API_BASE + "/deploy/configs/99999")
         .then()
             .statusCode(404)
             .body("success", is(false));
     }
 
     /**
-     * 测试部署配置CRUD流程
+     * 测试部署配置 CRUD 流程
      */
     @Test
     void testConfigCrudFlow() {
         // 1. 创建配置
         int configId = given()
+            .header(authHeader())
             .contentType(ContentType.JSON)
             .body("{\"name\":\"CRUD Test Agent\",\"type\":\"AGENT\",\"configJson\":\"{}\"}")
         .when()
-            .post(API_BASE + "/configs")
+            .post(API_BASE + "/deploy/configs")
         .then()
             .statusCode(200)
             .body("success", is(true))
@@ -116,8 +165,9 @@ class DeployApiTest {
 
         // 2. 获取配置
         given()
+            .header(authHeader())
         .when()
-            .get(API_BASE + "/configs/" + configId)
+            .get(API_BASE + "/deploy/configs/" + configId)
         .then()
             .statusCode(200)
             .body("success", is(true))
@@ -125,10 +175,11 @@ class DeployApiTest {
 
         // 3. 更新配置
         given()
+            .header(authHeader())
             .contentType(ContentType.JSON)
             .body("{\"name\":\"Updated Agent\",\"type\":\"AGENT\",\"configJson\":\"{}\"}")
         .when()
-            .put(API_BASE + "/configs/" + configId)
+            .put(API_BASE + "/deploy/configs/" + configId)
         .then()
             .statusCode(200)
             .body("success", is(true))
@@ -136,8 +187,9 @@ class DeployApiTest {
 
         // 4. 删除配置
         given()
+            .header(authHeader())
         .when()
-            .delete(API_BASE + "/configs/" + configId)
+            .delete(API_BASE + "/deploy/configs/" + configId)
         .then()
             .statusCode(200)
             .body("success", is(true));
@@ -150,10 +202,11 @@ class DeployApiTest {
     void testGetConfigById() {
         // 先创建一个配置
         int configId = given()
+            .header(authHeader())
             .contentType(ContentType.JSON)
             .body("{\"name\":\"View Test\",\"type\":\"AGENT\",\"configJson\":\"{\\\"serverHost\\\":\\\"localhost\\\"}\"}")
         .when()
-            .post(API_BASE + "/configs")
+            .post(API_BASE + "/deploy/configs")
         .then()
             .statusCode(200)
             .body("success", is(true))
@@ -161,8 +214,10 @@ class DeployApiTest {
             .path("data.id");
 
         // 获取详情
-        when()
-            .get(API_BASE + "/configs/" + configId)
+        given()
+            .header(authHeader())
+        .when()
+            .get(API_BASE + "/deploy/configs/" + configId)
         .then()
             .statusCode(200)
             .body("success", is(true))
@@ -179,35 +234,41 @@ class DeployApiTest {
     @Test
     void testStatsAccuracy() {
         // 获取初始统计
-        int initialAgents = when()
-            .get(API_BASE + "/stats")
+        int initialAgents = given()
+            .header(authHeader())
+        .when()
+            .get(API_BASE + "/deploy/stats")
         .then()
             .statusCode(200)
             .body("success", is(true))
             .extract()
             .path("totalAgents");
 
-        // 创建Agent配置
+        // 创建 Agent 配置
         given()
+            .header(authHeader())
             .contentType(ContentType.JSON)
             .body("{\"name\":\"Stats Test Agent\",\"type\":\"AGENT\",\"configJson\":\"{}\"}")
         .when()
-            .post(API_BASE + "/configs")
+            .post(API_BASE + "/deploy/configs")
         .then()
             .statusCode(200);
 
-        // 创建Server配置
+        // 创建 Server 配置
         given()
+            .header(authHeader())
             .contentType(ContentType.JSON)
             .body("{\"name\":\"Stats Test Server\",\"type\":\"SERVER\",\"configJson\":\"{}\"}")
         .when()
-            .post(API_BASE + "/configs")
+            .post(API_BASE + "/deploy/configs")
         .then()
             .statusCode(200);
 
         // 验证统计更新
-        when()
-            .get(API_BASE + "/stats")
+        given()
+            .header(authHeader())
+        .when()
+            .get(API_BASE + "/deploy/stats")
         .then()
             .statusCode(200)
             .body("totalAgents", equalTo(initialAgents + 1))
@@ -221,12 +282,13 @@ class DeployApiTest {
     @Test
     void testCreateConfigWithEmptyName() {
         given()
+            .header(authHeader())
             .contentType(ContentType.JSON)
             .body("{\"name\":\"\",\"type\":\"AGENT\",\"configJson\":\"{}\"}")
         .when()
-            .post(API_BASE + "/configs")
+            .post(API_BASE + "/deploy/configs")
         .then()
-            // 空名称应该被处理(后端或返回400或200但name为空)
+            // 空名称应该被处理 (后端或返回 400 或 200 但 name 为空)
             .statusCode(anyOf(is(200), is(400)));
     }
 
@@ -236,25 +298,27 @@ class DeployApiTest {
     @Test
     void testCreateConfigWithInvalidType() {
         given()
+            .header(authHeader())
             .contentType(ContentType.JSON)
             .body("{\"name\":\"Invalid Type Test\",\"type\":\"INVALID\",\"configJson\":\"{}\"}")
         .when()
-            .post(API_BASE + "/configs")
+            .post(API_BASE + "/deploy/configs")
         .then()
             .statusCode(anyOf(is(200), is(400)));
     }
 
     /**
-     * 测试配置JSON格式错误
-     * 前端传入无效JSON时的错误处理
+     * 测试配置 JSON 格式错误
+     * 前端传入无效 JSON 时的错误处理
      */
     @Test
     void testCreateConfigWithMalformedJson() {
         given()
+            .header(authHeader())
             .contentType(ContentType.JSON)
             .body("{\"name\":\"Malformed JSON Test\",\"type\":\"AGENT\",\"configJson\":\"not-valid-json\"}")
         .when()
-            .post(API_BASE + "/configs")
+            .post(API_BASE + "/deploy/configs")
         .then()
             .statusCode(anyOf(is(200), is(400)));
     }
@@ -264,8 +328,10 @@ class DeployApiTest {
      */
     @Test
     void testDeleteNonExistentConfig() {
-        when()
-            .delete(API_BASE + "/configs/999999")
+        given()
+            .header(authHeader())
+        .when()
+            .delete(API_BASE + "/deploy/configs/999999")
         .then()
             .statusCode(anyOf(is(200), is(404)));
     }
