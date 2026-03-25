@@ -1,4 +1,59 @@
-// API 集成测试任务（需要手动启动服务后运行）
+plugins {
+    id 'java-library'
+    id 'jacoco'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+ext {
+    restAssuredVersion = '5.5.0'
+    mockitoVersion = '5.14.2'
+    allureVersion = '2.29.0'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.boot:spring-boot-dependencies:${rootProject.springBootVersion}"
+    }
+}
+
+dependencies {
+    // 引入模块进行测试
+    implementation project(':common')
+    implementation project(':agent')
+    implementation project(':server')
+    implementation project(':deploy')
+
+    // Spring Boot
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-test'
+
+    // Test
+    testImplementation "org.mockito:mockito-core:${mockitoVersion}"
+    testImplementation "io.rest-assured:rest-assured:${restAssuredVersion}"
+    testImplementation "io.rest-assured:json-path:${restAssuredVersion}"
+    testImplementation "io.rest-assured:xml-path:${restAssuredVersion}"
+    testImplementation "io.rest-assured:spring-mock-mvc:${restAssuredVersion}"
+
+    // Allure
+    testImplementation "io.qameta.allure:allure-junit5:${allureVersion}"
+
+    // Netty (用于测试 SslContext)
+    testImplementation 'io.netty:netty-handler:4.1.115.Final'
+}
+
+test {
+    useJUnitPlatform()
+    systemProperty 'allure.results.directory', 'build/reports/allure-results'
+
+    // 排除 API 测试（需要手动启动服务后运行）
+    exclude '**/ServerApiTest.class'
+    exclude '**/DeployApiTest.class'
+
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
+
 tasks.register('apiTest', Test) {
     group = 'verification'
     description = 'Run API integration tests (requires running services)'
@@ -9,4 +64,51 @@ tasks.register('apiTest', Test) {
     // 只运行 API 测试
     include '**/ServerApiTest.class'
     include '**/DeployApiTest.class'
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+        html.outputLocation = file("${buildDir}/reports/jacoco/test/html")
+    }
+
+    // 排除网络层代码（难以单元测试）
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                // Agent 网络层
+                'org/ljc/agent/handler/**',
+                'org/ljc/agent/AgentApplication.class',
+                'org/ljc/agent/AgentConfig.class',
+                // Server 网络层
+                'org/ljc/server/handler/**',
+                'org/ljc/server/ServerApplication.class',
+                'org/ljc/server/registry/**',
+                // Deploy 配置类
+                'org/ljc/deploy/DeployApplication.class',
+                'org/ljc/deploy/config/**'
+            ])
+        }))
+    }
+}
+
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule {
+            limit {
+                counter = 'INSTRUCTION'
+                minimum = 0.50
+            }
+        }
+        rule {
+            limit {
+                counter = 'METHOD'
+                minimum = 0.75
+            }
+        }
+    }
 }
