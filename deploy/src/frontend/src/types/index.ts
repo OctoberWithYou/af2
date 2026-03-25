@@ -40,6 +40,37 @@ export interface DeployConfig {
   type: 'AGENT' | 'SERVER'
   status: 'RUNNING' | 'STOPPED' | 'DEPLOYING'
   configJson: Record<string, unknown>
+  configJsonStr?: string
+  createdAt?: string
+  updatedAt?: string
+  createdBy?: string
+}
+
+// Agent 配置
+export interface AgentConfig {
+  agentId: string
+  name: string
+  description: string
+  serverUrl: string
+  sslEnabled: boolean
+  connectTimeout: number
+  heartbeatInterval: number
+  reconnectInterval: number
+  maxRetries: number
+  allowedTargets: string[]
+}
+
+// Server 配置
+export interface ServerConfig {
+  port: number
+  wsPort: number
+  sslEnabled: boolean
+  keyStorePath: string
+  keyStorePassword: string
+  heartbeatInterval: number
+  maxIdleTime: number
+  authUsername: string
+  authPassword: string
 }
 
 // 统计数据

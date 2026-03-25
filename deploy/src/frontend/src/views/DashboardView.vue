@@ -15,25 +15,25 @@
     <el-row :gutter="20" class="stats-row">
       <el-col :span="6">
         <el-card class="stat-card">
-          <div class="stat-value blue">{{ stats.totalAgents || 0 }}</div>
+          <div class="stat-value blue">{{ stats?.totalAgents ?? 0 }}</div>
           <div class="stat-label">Agent 总数</div>
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card class="stat-card">
-          <div class="stat-value green">{{ stats.runningAgents || 0 }}</div>
+          <div class="stat-value green">{{ stats?.runningAgents ?? 0 }}</div>
           <div class="stat-label">运行中 Agent</div>
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card class="stat-card">
-          <div class="stat-value blue">{{ stats.totalServers || 0 }}</div>
+          <div class="stat-value blue">{{ stats?.totalServers ?? 0 }}</div>
           <div class="stat-label">Server 总数</div>
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card class="stat-card">
-          <div class="stat-value green">{{ stats.runningServers || 0 }}</div>
+          <div class="stat-value green">{{ stats?.runningServers ?? 0 }}</div>
           <div class="stat-label">运行中 Server</div>
         </el-card>
       </el-col>
@@ -53,7 +53,9 @@
         <el-table-column prop="name" label="名称" />
         <el-table-column prop="type" label="类型" width="100">
           <template #default="{ row }">
-            {{ row.type === 'AGENT' ? 'Agent' : 'Server' }}
+            <el-tag :type="row.type === 'AGENT' ? 'success' : 'primary'">
+              {{ row.type === 'AGENT' ? 'Agent' : 'Server' }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
@@ -96,45 +98,24 @@
     </el-card>
 
     <!-- 配置对话框 -->
-    <el-dialog
-      v-model="dialogVisible"
-      :title="editingId ? '编辑配置' : '新建配置'"
-      width="500px"
-    >
-      <el-form :model="configForm" label-position="top">
-        <el-form-item label="名称">
-          <el-input v-model="configForm.name" placeholder="请输入配置名称" />
-        </el-form-item>
-        <el-form-item label="类型">
-          <el-select v-model="configForm.type" style="width: 100%">
-            <el-option label="Agent" value="AGENT" />
-            <el-option label="Server" value="SERVER" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="配置 JSON">
-          <el-input
-            v-model="configForm.configJsonStr"
-            type="textarea"
-            :rows="6"
-            placeholder='例如：{"key": "value"}'
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveConfig">保存</el-button>
-      </template>
-    </el-dialog>
+    <ConfigDialog
+      v-model:visible="dialogVisible"
+      ref="configDialogRef"
+      :editing-id="editingId"
+      :existing-config="currentEditConfig"
+      @save="saveConfig"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuth } from '@/composables/useAuth'
 import { useDeploy } from '@/composables/useDeploy'
 import type { DeployConfig } from '@/types'
+import ConfigDialog from '@/components/ConfigDialog.vue'
 
 const router = useRouter()
 const { currentUser, logout } = useAuth()
@@ -142,12 +123,8 @@ const { configs, stats, loading, loadConfigs, loadStats, createConfig, updateCon
 
 const dialogVisible = ref(false)
 const editingId = ref<number | null>(null)
-
-const configForm = reactive({
-  name: '',
-  type: 'AGENT' as 'AGENT' | 'SERVER',
-  configJsonStr: '',
-})
+const currentEditConfig = ref<DeployConfig | null>(null)
+const configDialogRef = ref<InstanceType<typeof ConfigDialog>>()
 
 const getStatusType = (status: string) => {
   switch (status) {
@@ -168,45 +145,42 @@ const viewConfig = (config: DeployConfig) => {
 
 const showAddDialog = () => {
   editingId.value = null
-  configForm.name = ''
-  configForm.type = 'AGENT'
-  configForm.configJsonStr = ''
+  currentEditConfig.value = null
+  configDialogRef.value?.resetForm()
   dialogVisible.value = true
 }
 
 const handleEdit = (config: DeployConfig) => {
   editingId.value = config.id
-  configForm.name = config.name
-  configForm.type = config.type
-  configForm.configJsonStr = JSON.stringify(config.configJson, null, 2)
+  currentEditConfig.value = { ...config }
   dialogVisible.value = true
 }
 
-const handleSaveConfig = async () => {
-  if (!configForm.name) {
+const saveConfig = async (configData: { name: string; type: 'AGENT' | 'SERVER'; configJson: Record<string, unknown> }) => {
+  if (!configData.name) {
     ElMessage.error('请输入名称')
-    return
-  }
-
-  let configJson = {}
-  try {
-    configJson = configForm.configJsonStr ? JSON.parse(configForm.configJsonStr) : {}
-  } catch {
-    ElMessage.error('配置 JSON 格式错误')
     return
   }
 
   const result = editingId.value
     ? await updateConfig(editingId.value, {
-        name: configForm.name,
-        type: configForm.type,
-        configJson,
+        id: editingId.value,
+        name: configData.name,
+        type: configData.type,
+        configJson: configData.configJson,
+        status: 'STOPPED',
+        configJsonStr: '',
+        createdAt: '',
+        updatedAt: '',
+        createdBy: '',
       })
-    : await createConfig(configForm.name, configForm.type, configForm.configJsonStr)
+    : await createConfig(configData.name, configData.type, JSON.stringify(configData.configJson))
 
   if (result.success) {
     ElMessage.success('保存成功')
     dialogVisible.value = false
+    loadConfigs()
+    loadStats()
   } else {
     ElMessage.error(result.message || '保存失败')
   }
@@ -216,6 +190,10 @@ const handleDeploy = async (id: number) => {
   const result = await deployConfig(id)
   if (result.success) {
     ElMessage.success('部署已启动')
+    setTimeout(() => {
+      loadConfigs()
+      loadStats()
+    }, 1000)
   } else {
     ElMessage.error(result.message || '部署失败')
   }
@@ -225,6 +203,10 @@ const handleStop = async (id: number) => {
   const result = await stopConfig(id)
   if (result.success) {
     ElMessage.success('停止成功')
+    setTimeout(() => {
+      loadConfigs()
+      loadStats()
+    }, 1000)
   } else {
     ElMessage.error(result.message || '停止失败')
   }
@@ -240,6 +222,8 @@ const handleDelete = async (id: number) => {
     const result = await deleteConfig(id)
     if (result.success) {
       ElMessage.success('删除成功')
+      loadConfigs()
+      loadStats()
     } else {
       ElMessage.error(result.message || '删除失败')
     }
