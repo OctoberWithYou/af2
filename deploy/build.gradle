@@ -10,7 +10,7 @@ application {
 }
 
 dependencies {
-    // 引入common模块
+    // 引入 common 模块
     implementation project(':common')
 
     // Spring Boot Web
@@ -28,7 +28,7 @@ dependencies {
     // Spring JDBC (嵌入式数据库支持)
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
 
-    // SLF4J日志
+    // SLF4J 日志
     implementation 'org.slf4j:slf4j-api:2.0.9'
 
     // 测试
@@ -36,20 +36,42 @@ dependencies {
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
     testImplementation "org.springframework.boot:spring-boot-starter-test"
 
-    // Allure测试报告
+    // Allure 测试报告
     testImplementation "io.qameta.allure:allure-junit5:${rootProject.allureVersion}"
 }
 
-// 打包时复制agent和server的jar到deploy目录（自包含部署）
-// agent和server的jar需要在根项目构建后存在于agent/build/libs和server/build/libs
+// 复制 agent 和 server 的可执行 JAR 到 deploy/build/deps 目录
+tasks.register('copyAgentJar', Copy) {
+    dependsOn rootProject.project(':agent').tasks.named('jar')
+    from rootProject.projectDir.toPath().resolve('agent/build/libs/agent-1.0.0.jar').toFile()
+    into layout.buildDirectory.dir('deps')
+    rename { 'agent.jar' }
+}
 
-// 清理时也清理复制的jar
+tasks.register('copyServerJar', Copy) {
+    dependsOn rootProject.project(':server').tasks.named('bootJar')
+    from rootProject.projectDir.toPath().resolve('server/build/libs/server-1.0.0.jar').toFile()
+    into layout.buildDirectory.dir('deps')
+    rename { 'server.jar' }
+}
+
+tasks.register('copyModuleJars') {
+    dependsOn copyAgentJar, copyServerJar
+    description = 'Copy agent and server JARs to deploy/build/deps'
+    group = 'build'
+}
+
+// bootRun 前需要先复制 JAR 文件
+tasks.named('bootRun') {
+    dependsOn copyModuleJars
+}
+
+// 清理时也清理复制的 jar
 clean {
     doLast {
-        def libsDir = file("$buildDir/libs")
-        if (libsDir.exists()) {
-            new File(libsDir, "agent.jar")?.delete()
-            new File(libsDir, "server.jar")?.delete()
+        def depsDir = layout.buildDirectory.dir('deps').get().asFile
+        if (depsDir.exists()) {
+            delete depsDir
         }
     }
 }
@@ -58,11 +80,3 @@ test {
     useJUnitPlatform()
     systemProperty 'allure.results.directory', 'build/reports/allure-results'
 }
-
-// 前端构建任务 (需要Node.js)
-// 如果不需要自动构建前端，可以注释掉
-// task buildFrontend(type: Exec) {
-//     workingDir 'src/main/resources/static'
-//     commandLine 'npm', 'install'
-//     commandLine 'npm', 'run', 'build'
-// }

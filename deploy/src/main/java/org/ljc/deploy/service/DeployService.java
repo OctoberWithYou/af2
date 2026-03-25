@@ -267,6 +267,6 @@ public class DeployService {
         }
 
         // 默认使用deploy的运行目录
-        return ".";
+        return "build/deps";
     }
 }
