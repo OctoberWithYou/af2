@@ -10,6 +10,10 @@ import java.util.Map;
 
 /**
  * 认证控制器
+ * 提供用户登录、登出、密码修改等认证功能
+ *
+ * @author AI Forward Team
+ * @created 2026-03-25
  */
 @RestController
 @RequestMapping("/api/auth")
@@ -23,6 +27,8 @@ public class AuthController {
     
     /**
      * 用户登录
+     * @param credentials 登录凭证，包含 username 和 password
+     * @return 登录结果，包含 token 和 mustChangePassword 标志
      */
     @PostMapping("/login")
     public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> credentials) {
@@ -45,6 +51,8 @@ public class AuthController {
     
     /**
      * 用户登出
+     * @param token 认证 token（Bearer 格式）
+     * @return 登出结果
      */
     @PostMapping("/logout")
     public ResponseEntity<Map<String, Object>> logout(@RequestHeader(value = "Authorization", required = false) String token) {
@@ -58,6 +66,9 @@ public class AuthController {
     
     /**
      * 修改密码
+     * @param token 认证 token（Bearer 格式）
+     * @param passwords 包含 oldPassword 和 newPassword
+     * @return 修改结果
      */
     @PostMapping("/change-password")
     public ResponseEntity<Map<String, Object>> changePassword(
@@ -92,6 +103,8 @@ public class AuthController {
     
     /**
      * 获取当前用户信息
+     * @param token 认证 token（Bearer 格式）
+     * @return 当前用户信息
      */
     @GetMapping("/me")
     public ResponseEntity<Map<String, Object>> getCurrentUser(@RequestHeader(value = "Authorization", required = false) String token) {
