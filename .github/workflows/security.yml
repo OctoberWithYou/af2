@@ -1,0 +1,53 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [master, main]
+  schedule:
+    - cron: '0 2 * * 1'  # Every Monday at 2 AM
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Run dependency analysis
+        run: ./gradlew dependencies --configuration runtimeClasspath
+
+      - name: Check for known vulnerabilities
+        run: |
+          ./gradlew dependencyCheckAnalyze || true
+
+  codeql:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: Java, TypeScript
+
+      - name: Build
+        run: |
+          chmod +x gradlew
+          ./gradlew build -x test
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:java"

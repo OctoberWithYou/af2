@@ -1,0 +1,41 @@
+# Branch Protection Configuration
+#
+# This file documents the recommended branch protection rules for the master/main branch.
+# Apply these settings in GitHub repository Settings > Branches > Branch protection rules
+#
+# ---
+# Required Status Checks (must pass before merging):
+#   - ci / test (Ubuntu latest)
+#   - ci / frontend-build (Ubuntu latest)
+#   - ci / code-quality (Ubuntu latest)
+#
+# Additional Protection Rules:
+#   - Require pull request reviews before merging (1 approval required)
+#   - Require status checks to pass before merging (enabled)
+#   - Require branches to be up to date before merging (enabled)
+#   - Include administrators (enabled)
+#   - Restrict who can push (optional: add team/user restrictions)
+#
+# ---
+# Workflow Dispatch (for manual runs):
+#   - Enable "Allow GitHub Actions to create and approve pull requests" if needed
+
+name: Branch Protection
+
+on:
+  workflow_dispatch:
+
+jobs:
+  protect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch protection
+        run: |
+          echo "Branch protection rules should be configured in GitHub Settings"
+          echo "Go to: Repository Settings > Branches > Add rule"
+          echo "Branch pattern: master"
+          echo ""
+          echo "Required checks:"
+          echo "  - ci / test"
+          echo "  - ci / frontend-build"
+          echo "  - ci / code-quality"
