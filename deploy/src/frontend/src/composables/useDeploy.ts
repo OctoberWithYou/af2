@@ -31,7 +31,7 @@ export function useDeploy() {
   }
 
   const createConfig = async (name: string, type: 'AGENT' | 'SERVER', configJson: string) => {
-    const result = await api.createConfig({ name, type, configJson: JSON.parse(configJson || '{}') })
+    const result = await api.createConfig({ name, type, configJson })
     if (result.success) {
       await loadConfigs()
       await loadStats()

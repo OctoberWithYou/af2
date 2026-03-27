@@ -3,6 +3,7 @@ package org.ljc.server.registry;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelId;
 import org.ljc.common.model.AgentInfo;
+import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -11,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Agent注册表
  * 管理已连接的Agent信息
  */
+@Component
 public class AgentRegistry {
     /**
      * Agent信息映射: agentId -> AgentInfo
