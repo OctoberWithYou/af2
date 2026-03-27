@@ -20,7 +20,7 @@ dependencies {
 
     // SLF4J 日志
     implementation 'org.slf4j:slf4j-api:2.0.9'
-    implementation 'ch.qos.logback:logback-classic:1.4.14'
+    implementation 'ch.qos.logback:logback-classic:1.5.32'
 
     // 测试
     testImplementation "org.junit.jupiter:junit-jupiter:${rootProject.junitVersion}"
