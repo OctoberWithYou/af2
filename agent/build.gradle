@@ -19,7 +19,7 @@ dependencies {
     implementation 'org.apache.httpcomponents.client5:httpclient5:5.2.1'
 
     // SLF4J 日志
-    implementation 'org.slf4j:slf4j-api:2.0.9'
+    implementation 'org.slf4j:slf4j-api:2.0.17'
     implementation 'ch.qos.logback:logback-classic:1.4.14'
 
     // 测试
