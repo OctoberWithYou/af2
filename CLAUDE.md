@@ -1,9 +1,14 @@
 # AI Forward 项目规范文档
 
+> 本文件为 AI Forward 项目的核心规范文档，包含代码规范、测试规范、提交规范等所有项目要求。
+> 本文件内容源自原 规范.md，已完整迁移。
+
 ## 版本信息
 - 版本：1.1.0
 - 创建日期：2026-03-23
 - 最后更新：2026-03-25
+
+---
 
 ## 1. 代码规范
 
@@ -45,6 +50,8 @@
 - 使用 composables 封装可复用逻辑 (如：`useAuth.ts`)
 - 行长度不超过 100 字符（前端）
 - 使用 2 空格缩进（前端）
+
+---
 
 ## 2. 测试规范
 
@@ -96,6 +103,8 @@
   - [ ] 提交信息格式是否正确
   - [ ] 代码是否符合命名和注释规范
 
+---
+
 ## 3. 提交规范
 
 ### 3.1 提交信息格式
@@ -128,6 +137,8 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 - [ ] 无编译警告
 - [ ] 代码格式符合规范
 
+---
+
 ## 4. 问题跟踪
 
 ### 4.1 Bug 处理流程
@@ -141,11 +152,15 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 |----|------|--------|------|
 | - | 无已知问题 | - | - |
 
+---
+
 ## 5. AI 对话存储
 
 - 所有与 AI 的对话存储在项目的 doc 目录
 - 文件大小超过 10M 则切换新文件
 - 命名格式：`conversation_YYYYMMDD_N.md`
+
+---
 
 ## 6. 模块说明
 
@@ -186,6 +201,8 @@ Agent 模块 (内网部署)，包含:
 - Allure 报告配置
 - JaCoCo 覆盖率配置
 
+---
+
 ## 7. 快速开始
 
 ### 7.1 构建项目
@@ -225,6 +242,39 @@ npm run dev
 npm run build
 ```
 
+---
+
 ## 8. 联系方式
 - 维护者：Claude Opus 4.6
 - 项目：AI Model Forwarding Proxy
+
+---
+
+## 项目架构
+
+AI Forward 是一个用于在内网部署 Agent，通过公网 Server 转发 AI 模型访问请求的系统。
+
+### 技术栈
+- **后端**: Java 17, Spring Boot 3.x, Netty
+- **前端**: Vue 3, TypeScript, Element Plus, Vite
+- **测试**: JUnit 5, Allure, RestAssured, Vitest
+- **构建**: Gradle
+
+### 模块结构
+```
+.
+├── common/           # 公共模块
+├── server/           # Server 模块（公网部署）
+├── agent/            # Agent 模块（内网部署）
+├── deploy/           # 部署管理模块
+├── test/             # 测试模块
+└── src/              # 根目录资源
+```
+
+### 端口规划
+| 模块 | 端口 | 说明 |
+|------|------|------|
+| server | 8080 (HTTP) / 8443 (HTTPS) | 公网服务 |
+| server-ws | 8888 (WS) / 8889 (WSS) | WebSocket |
+| deploy | 8081 (HTTP) / 8443 (HTTPS) | 管理界面 |
+| agent | 8082 | 内网服务 |
