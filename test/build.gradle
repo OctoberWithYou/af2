@@ -6,7 +6,7 @@ plugins {
 
 ext {
     restAssuredVersion = '5.5.0'
-    mockitoVersion = '5.14.2'
+    mockitoVersion = '5.23.0'
     allureVersion = '2.29.0'
 }
 
