@@ -32,6 +32,6 @@
     "eslint-plugin-prettier": "^5.2.0",
     "vitest": "^2.1.0",
     "@vue/test-utils": "^2.4.0",
-    "jsdom": "^25.0.0"
+    "jsdom": "^29.0.1"
   }
 }
