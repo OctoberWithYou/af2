@@ -38,7 +38,7 @@ dependencies {
     testImplementation "io.qameta.allure:allure-junit5:${allureVersion}"
 
     // Netty (用于测试 SslContext)
-    testImplementation 'io.netty:netty-handler:4.1.115.Final'
+    testImplementation 'io.netty:netty-handler:4.2.12.Final'
 }
 
 test {
