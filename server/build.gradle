@@ -26,7 +26,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-configuration-processor'
 
     // SLF4J日志
-    implementation 'org.slf4j:slf4j-api:2.0.9'
+    implementation 'org.slf4j:slf4j-api:2.0.17'
 
     // 测试
     testImplementation "org.junit.jupiter:junit-jupiter:${rootProject.junitVersion}"
